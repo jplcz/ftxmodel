@@ -1,0 +1,47 @@
+name: Check tests with sanitizers
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch: # Allows manual pipeline triggering from the UI
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pull down repository source code layer
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          # Create an isolated cache space for each operating system/compiler pair
+          key: ubuntu-latest-gcc
+          max-size: 500M
+
+      - name: Configure with Sanitizers Enabled
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,leak -fno-omit-frame-pointer" \
+            -DCMAKE_C_FLAGS="-fsanitize=address,leak -fno-omit-frame-pointer" \
+            -DENABLE_TESTING=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Compile Target Artifacts
+        run: cmake --build build
+
+      - name: Execute Framework Test Suite
+        env:
+          # Turn on strict tracking diagnostics output flags
+          ASAN_OPTIONS: "detect_leaks=1:color=always:abort_on_error=1"
+        working-directory: build/tests
+        run: |
+          ctest --output-on-failure
