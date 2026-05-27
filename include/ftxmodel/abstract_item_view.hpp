@@ -1,5 +1,6 @@
 #pragma once
 #include "abstract_item_model.hpp"
+#include "header_delegate.hpp"
 #include "item_delegate.hpp"
 #include "item_selection_model.hpp"
 
@@ -28,9 +29,14 @@ class AbstractItemView : public sigslot::observer {
     delegate_ = delegate;
   }
 
+  virtual void setHeaderDelegate(std::shared_ptr<HeaderDelegate> delegate) {
+    header_delegate_ = delegate;
+  }
+
   AbstractItemModel* model() const { return model_; }
   ItemSelectionModel* selectionModel() const { return selection_model_.get(); }
   ItemDelegate* itemDelegate() const { return delegate_.get(); }
+  HeaderDelegate* headerDelegate() const { return header_delegate_.get(); }
 
   // Pure virtual method to draw the entire structural frame container
   virtual ftxui::Element render() = 0;
@@ -49,6 +55,8 @@ class AbstractItemView : public sigslot::observer {
   AbstractItemModel* model_ = nullptr;
   std::shared_ptr<ItemDelegate> delegate_ = nullptr;
   std::unique_ptr<ItemSelectionModel> selection_model_ = nullptr;
+  std::shared_ptr<HeaderDelegate> header_delegate_ =
+      std::make_shared<AdvancedHeaderDelegate>();
 };
 
 }  // namespace ftxmodel

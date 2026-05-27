@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <any>
 #include <ftxmodel/abstract_item_model.hpp>
 #include <ftxui/dom/elements.hpp>

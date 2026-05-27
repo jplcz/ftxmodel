@@ -8,4 +8,4 @@
 #include <ftxmodel/list_view.hpp>
 #include <ftxmodel/string_list_model.hpp>
 #include <ftxmodel/table_view.hpp>
-
+#include <ftxmodel/tree_view.hpp>

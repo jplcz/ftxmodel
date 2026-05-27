@@ -11,10 +11,13 @@ class ListView : public AbstractItemView {
  private:
   int selected_row_ = 0;
   std::function<void()> trigger_ftxui_refresh_;
+  bool show_headers_ = true;
 
  public:
   explicit ListView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
+
+  void setShowHeaders(bool show) { show_headers_ = show; }
 
   void setModel(AbstractItemModel* model) override {
     AbstractItemView::setModel(model);
@@ -55,6 +58,15 @@ class ListView : public AbstractItemView {
       return ftxui::text("Missing model or delegate bindings.");
     }
     std::vector<ftxui::Element> renderedRows;
+
+    if (show_headers_) {
+      // Pulls directly from the base class via headerDelegate()
+      ftxui::Element headerWidget = headerDelegate()->createHeaderWidget(
+          0, Orientation::Horizontal, model());
+      renderedRows.push_back(headerWidget | ftxui::flex_shrink);
+      renderedRows.push_back(ftxui::separator());
+    }
+
     int activeRow = selectionModel()->currentIndex().row();
     int totalRows = model()->rowCount();
 

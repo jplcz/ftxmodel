@@ -28,3 +28,7 @@ add_executable(table_view_app table_view_app.cpp)
 target_link_libraries(table_view_app PRIVATE ftxmodel)
 target_compile_features(table_view_app PRIVATE cxx_std_20)
 
+add_executable(tree_view_app tree_view_app.cpp)
+target_link_libraries(tree_view_app PRIVATE ftxmodel)
+target_compile_features(tree_view_app PRIVATE cxx_std_20)
+

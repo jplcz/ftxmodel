@@ -5,6 +5,7 @@
 #include <vector>
 #include "abstract_item_view.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "header_delegate.hpp"
 
 namespace ftxmodel {
 
@@ -17,6 +18,8 @@ class TableView : public AbstractItemView {
   explicit TableView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
 
+  void setShowHeaders(bool show) { show_headers_ = show; }
+
   void setModel(AbstractItemModel* model) override {
     // Essential: Invoke base class to hook up signals and instantiate
     // SelectionModel
@@ -27,8 +30,6 @@ class TableView : public AbstractItemView {
       selectionModel()->setCurrentIndex(model->index(0, 0));
     }
   }
-
-  void setShowHeaders(bool show) { show_headers_ = show; }
 
   // ========================================================================
   // 2D Navigation Controls
@@ -86,15 +87,10 @@ class TableView : public AbstractItemView {
     if (show_headers_) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
-        // Queries your virtual fallback headerData implementation safely
-        std::any hData = model()->headerData(c, Orientation::Horizontal,
-                                             ItemRole::DisplayRole);
-        std::string hText = hData.type() == typeid(std::string)
-                                ? std::any_cast<std::string>(hData)
-                                : "Col " + std::to_string(c);
-
-        headerRow.push_back(ftxui::text(hText) | ftxui::bold | ftxui::center |
-                            ftxui::bgcolor(ftxui::Color::GrayDark));
+        // COMPONENT INTERACTION: Ask header delegate to construct the visual
+        // block
+        headerRow.push_back(headerDelegate()->createHeaderWidget(
+            c, Orientation::Horizontal, model()));
       }
       gridMatrix.push_back(std::move(headerRow));
     }
