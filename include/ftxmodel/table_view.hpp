@@ -9,16 +9,13 @@
 
 namespace ftxmodel {
 
-class TableView : public AbstractItemView {
+class TableView : public AbstractGridLikeItemView {
  private:
   std::function<void()> trigger_ftxui_refresh_;
-  bool show_headers_ = true;
 
  public:
   explicit TableView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
-
-  void setShowHeaders(bool show) { show_headers_ = show; }
 
   void setModel(AbstractItemModel* model) override {
     // Essential: Invoke base class to hook up signals and instantiate
@@ -34,7 +31,7 @@ class TableView : public AbstractItemView {
   // ========================================================================
   // 2D Navigation Controls
   // ========================================================================
-  void moveUp() {
+  void moveUp() override {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.row() > 0) {
       selectionModel()->setCurrentIndex(
@@ -43,7 +40,7 @@ class TableView : public AbstractItemView {
     }
   }
 
-  void moveDown() {
+  void moveDown() override {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.row() < model()->rowCount() - 1) {
       selectionModel()->setCurrentIndex(
@@ -52,7 +49,7 @@ class TableView : public AbstractItemView {
     }
   }
 
-  void moveLeft() {
+  void moveLeft() override {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.column() > 0) {
       selectionModel()->setCurrentIndex(
@@ -61,7 +58,7 @@ class TableView : public AbstractItemView {
     }
   }
 
-  void moveRight() {
+  void moveRight() override {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.column() < model()->columnCount() - 1) {
       selectionModel()->setCurrentIndex(
@@ -84,7 +81,7 @@ class TableView : public AbstractItemView {
     ModelIndex focusedIndex = selectionModel()->currentIndex();
 
     // Optional Horizontal Headers Pass
-    if (show_headers_) {
+    if (showHeaders()) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
         // COMPONENT INTERACTION: Ask header delegate to construct the visual

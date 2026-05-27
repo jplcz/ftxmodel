@@ -53,6 +53,9 @@ class AbstractItemModel {
   virtual bool setData(const ModelIndex& index,
                        const std::any& value,
                        ItemRole role = ItemRole::EditRole) {
+    std::ignore = index;
+    std::ignore = value;
+    std::ignore = role;
     return false;
   }
 
@@ -61,6 +64,7 @@ class AbstractItemModel {
   virtual std::any headerData(int section,
                               Orientation orientation,
                               ItemRole role = ItemRole::DisplayRole) const {
+    std::ignore = orientation;
     if (role == ItemRole::DisplayRole) {
       return std::to_string(section);
     }
@@ -72,6 +76,10 @@ class AbstractItemModel {
                              Orientation orientation,
                              const std::any& value,
                              ItemRole role = ItemRole::EditRole) {
+    std::ignore = section;
+    std::ignore = orientation;
+    std::ignore = value;
+    std::ignore = role;
     return false;
   }
 

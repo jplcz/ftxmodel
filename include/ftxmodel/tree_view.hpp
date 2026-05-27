@@ -9,7 +9,7 @@
 
 namespace ftxmodel {
 
-class TreeView : public AbstractItemView {
+class TreeView : public AbstractGridLikeItemView {
  private:
   std::function<void()> trigger_ftxui_refresh_;
   std::vector<ModelIndex> flattened_indices_;
@@ -19,7 +19,6 @@ class TreeView : public AbstractItemView {
   std::set<void*> expanded_nodes_;
 
   int selected_linear_row_ = 0;
-  bool show_headers_ = true;
 
  public:
   explicit TreeView(std::function<void()> refreshCb)
@@ -31,8 +30,6 @@ class TreeView : public AbstractItemView {
     selected_linear_row_ = 0;
     rebuildFlattenedTree();
   }
-
-  void setShowHeaders(bool show) { show_headers_ = show; }
 
   // ========================================================================
   // Keyboard Navigation Mapping
@@ -128,7 +125,7 @@ class TreeView : public AbstractItemView {
     ModelIndex activeIndex = selectionModel()->currentIndex();
 
     // Optional Horizontal Header Generation
-    if (show_headers_) {
+    if (showHeaders()) {
       // TreeView pulls directly from the base class effortlessly
       ftxui::Element headerWidget = headerDelegate()->createHeaderWidget(
           0, Orientation::Horizontal, model());

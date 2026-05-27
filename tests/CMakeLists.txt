@@ -23,6 +23,7 @@ gtest_discover_tests(unit_tests)
 add_executable(list_view_app list_view_app.cpp)
 target_link_libraries(list_view_app PRIVATE ftxmodel)
 target_compile_features(list_view_app PRIVATE cxx_std_20)
+target_compile_options(list_view_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
 
 add_executable(table_view_app table_view_app.cpp)
 target_link_libraries(table_view_app PRIVATE ftxmodel)

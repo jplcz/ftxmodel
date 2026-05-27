@@ -9,14 +9,10 @@ class AbstractListModel : public AbstractItemModel {
   virtual ~AbstractListModel() = default;
 
   // A list ALWAYS has exactly 1 column
-  int columnCount(const ModelIndex& parent = ModelIndex()) const final {
-    return 1;
-  }
+  int columnCount(const ModelIndex& = ModelIndex()) const final { return 1; }
 
   // A flat list item NEVER has a parent
-  ModelIndex parent(const ModelIndex& child) const final {
-    return ModelIndex();
-  }
+  ModelIndex parent(const ModelIndex&) const final { return ModelIndex(); }
 
   // Simplifies index generation so subclasses don't mess up columns or parents
   ModelIndex index(int row,
@@ -33,7 +29,10 @@ class AbstractListModel : public AbstractItemModel {
  protected:
   // Subclasses can optionally override this to provide internal pointers for
   // optimization
-  virtual void* internalPointerAt(int row) const { return nullptr; }
+  virtual void* internalPointerAt(int row) const {
+    std::ignore = row;
+    return nullptr;
+  }
 };
 
 }  // namespace ftxmodel

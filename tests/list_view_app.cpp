@@ -28,10 +28,10 @@ class PackageListModel : public AbstractListModel {
       return {};
     }
     if (role == ItemRole::DisplayRole) {
-      return packages_[index.row()].name;
+      return packages_[(size_t)index.row()].name;
     }
     if (role == ItemRole::CheckedRole) {
-      return packages_[index.row()].status;
+      return packages_[(size_t)index.row()].status;
     }
     return {};
   }
@@ -44,7 +44,7 @@ class PackageListModel : public AbstractListModel {
     }
 
     if (role == ItemRole::CheckedRole && value.type() == typeid(bool)) {
-      packages_[index.row()].status = std::any_cast<bool>(value);
+      packages_[(size_t)index.row()].status = std::any_cast<bool>(value);
       dataChanged(index, index);  // Alert view via sigslot
       return true;
     }
@@ -60,7 +60,7 @@ class PackageListModel : public AbstractListModel {
 
  protected:
   void* internalPointerAt(int row) const override {
-    return (void*)&packages_[row];
+    return (void*)&packages_.at((size_t)row);
   }
 };
 

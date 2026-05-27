@@ -29,21 +29,16 @@ class AbstractItemView : public sigslot::observer {
     delegate_ = delegate;
   }
 
-  virtual void setHeaderDelegate(std::shared_ptr<HeaderDelegate> delegate) {
-    header_delegate_ = delegate;
-  }
-
   AbstractItemModel* model() const { return model_; }
   ItemSelectionModel* selectionModel() const { return selection_model_.get(); }
   ItemDelegate* itemDelegate() const { return delegate_.get(); }
-  HeaderDelegate* headerDelegate() const { return header_delegate_.get(); }
 
   // Pure virtual method to draw the entire structural frame container
   virtual ftxui::Element render() = 0;
 
  protected:
   // This acts as our slot callback
-  void onDataChanged(const ModelIndex& topLeft, const ModelIndex& bottomRight) {
+  void onDataChanged(const ModelIndex&, const ModelIndex&) {
     // Refresh your FTXUI screen or trigger a repaint
     update();
   }
@@ -55,8 +50,36 @@ class AbstractItemView : public sigslot::observer {
   AbstractItemModel* model_ = nullptr;
   std::shared_ptr<ItemDelegate> delegate_ = nullptr;
   std::unique_ptr<ItemSelectionModel> selection_model_ = nullptr;
+};
+
+class AbstractGridLikeItemView : public AbstractItemView {
+ private:
   std::shared_ptr<HeaderDelegate> header_delegate_ =
       std::make_shared<AdvancedHeaderDelegate>();
+  bool show_headers_ = true;
+
+ public:
+  AbstractGridLikeItemView() = default;
+  virtual ~AbstractGridLikeItemView() = default;
+
+  // --- Header Management ---
+  void setHeaderDelegate(std::shared_ptr<HeaderDelegate> delegate) {
+    if (delegate) {
+      header_delegate_ = delegate;
+    }
+  }
+
+  HeaderDelegate* headerDelegate() const { return header_delegate_.get(); }
+
+  void setShowHeaders(bool show) { show_headers_ = show; }
+  bool showHeaders() const { return show_headers_; }
+
+  // --- Enforced Grid Navigation API ---
+  // Every grid-like layout must know how to respond to 4-way spatial navigation
+  virtual void moveUp() {}
+  virtual void moveDown() {}
+  virtual void moveLeft() {}
+  virtual void moveRight() {}
 };
 
 }  // namespace ftxmodel

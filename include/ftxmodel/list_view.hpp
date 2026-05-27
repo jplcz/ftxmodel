@@ -7,17 +7,14 @@
 
 namespace ftxmodel {
 
-class ListView : public AbstractItemView {
+class ListView : public AbstractGridLikeItemView {
  private:
   int selected_row_ = 0;
   std::function<void()> trigger_ftxui_refresh_;
-  bool show_headers_ = true;
 
  public:
   explicit ListView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
-
-  void setShowHeaders(bool show) { show_headers_ = show; }
 
   void setModel(AbstractItemModel* model) override {
     AbstractItemView::setModel(model);
@@ -27,7 +24,7 @@ class ListView : public AbstractItemView {
     }
   }
 
-  void moveUp() {
+  void moveUp() override {
     int currentRow = selectionModel()->currentIndex().row();
     if (currentRow > 0) {
       selectionModel()->setCurrentIndex(model()->index(currentRow - 1, 0));
@@ -35,7 +32,7 @@ class ListView : public AbstractItemView {
     }
   }
 
-  void moveDown() {
+  void moveDown() override {
     int currentRow = selectionModel()->currentIndex().row();
     if (currentRow < model()->rowCount() - 1) {
       selectionModel()->setCurrentIndex(model()->index(currentRow + 1, 0));
@@ -59,7 +56,7 @@ class ListView : public AbstractItemView {
     }
     std::vector<ftxui::Element> renderedRows;
 
-    if (show_headers_) {
+    if (showHeaders()) {
       // Pulls directly from the base class via headerDelegate()
       ftxui::Element headerWidget = headerDelegate()->createHeaderWidget(
           0, Orientation::Horizontal, model());
