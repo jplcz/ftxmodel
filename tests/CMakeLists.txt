@@ -39,3 +39,8 @@ add_executable(task_view_tree_app task_view_tree_app.cpp)
 target_link_libraries(task_view_tree_app PRIVATE ftxmodel)
 target_compile_features(task_view_tree_app PRIVATE cxx_std_20)
 target_compile_options(task_view_tree_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
+
+add_executable(fs_model_app fs_model_app.cpp)
+target_link_libraries(fs_model_app PRIVATE ftxmodel)
+target_compile_features(fs_model_app PRIVATE cxx_std_20)
+target_compile_options(fs_model_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)

@@ -3,6 +3,7 @@
 #include <ftxmodel/abstract_item_model.hpp>
 #include <ftxmodel/abstract_item_view.hpp>
 #include <ftxmodel/abstract_list_model.hpp>
+#include <ftxmodel/file_system_model.hpp>
 #include <ftxmodel/item_delegate.hpp>
 #include <ftxmodel/item_selection_model.hpp>
 #include <ftxmodel/list_view.hpp>
