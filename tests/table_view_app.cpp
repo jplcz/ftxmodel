@@ -70,7 +70,9 @@ class TaskTableModel : public AbstractItemModel {
 // 2. Multi-Column Router Delegate Mapping Existing Delegate Types
 class TableColumnRouterDelegate : public ItemDelegate {
  private:
-  StyledTextDelegate text_del_;
+  StyledTextDelegate text_del_{StyledTextDelegate::Alignment::Left,
+                               ftxui::Color::White,
+                               TextSizeConstraints(32, 32)};
   CheckBoxDelegate check_del_;
   ProgressBarDelegate progress_del_{100.0f};
 
@@ -86,6 +88,25 @@ class TableColumnRouterDelegate : public ItemDelegate {
         return progress_del_.createWidget(index, model);
       default:
         return ftxui::text("");
+    }
+  }
+
+  ftxui::Dimensions sizeHint(const ModelIndex& index,
+                             const AbstractItemModel* model) const override {
+    switch (index.column()) {
+      case 0:
+        // Routes the 32-character strict fixed-width bounds hint forward
+        return text_del_.sizeHint(index, model);
+      case 1:
+        // Routes the static 3-character width footprint hint forward (" [X] ")
+        return check_del_.sizeHint(index, model);
+      case 2:
+        // Routes the internal aggregate progress width footprint hint forward
+        // (17 characters)
+        return progress_del_.sizeHint(index, model);
+      default:
+        // Fallback boundary constraint track
+        return ftxui::Dimensions{0, 1};
     }
   }
 };

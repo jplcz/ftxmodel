@@ -235,6 +235,30 @@ class TaskThreadRouterDelegate : public ItemDelegate {
 
     return ftxui::text("");
   }
+
+  ftxui::Dimensions sizeHint(const ModelIndex& index,
+                             const AbstractItemModel* model) const override {
+    std::any val = model->data(index, ItemRole::DisplayRole);
+    if (!val.has_value()) {
+      return ftxui::Dimensions{0, 1};
+    }
+
+    // Mirror the type evaluations exactly to route geometric hints forward
+    if (val.type() == typeid(std::string)) {
+      if (index.column() == 1) {
+        return right_aligned_meta_.sizeHint(index, model);
+      }
+      return left_aligned_text_.sizeHint(index, model);
+    }
+    if (val.type() == typeid(double)) {
+      return cpu_gauge_bar_.sizeHint(index, model);
+    }
+    if (val.type() == typeid(bool)) {
+      return active_state_checkbox_.sizeHint(index, model);
+    }
+
+    return ftxui::Dimensions{0, 1};
+  }
 };
 
 // ============================================================================

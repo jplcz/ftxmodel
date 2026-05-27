@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "text_size_constraints.hpp"
 
 namespace ftxmodel {
 
@@ -35,13 +36,23 @@ class StyledTextDelegate : public ItemDelegate {
   enum class Alignment { Left, Center, Right };
 
   StyledTextDelegate(Alignment align = Alignment::Left,
-                     ftxui::Color color = ftxui::Color::White)
-      : alignment_(align), text_color_(color) {}
+                     ftxui::Color color = ftxui::Color::White,
+                     TextSizeConstraints constraints = {})
+      : alignment_(align), text_color_(color), constraints_(constraints) {}
+
+  // Expose the helper profile directly to let developers modify bounds on the
+  // fly
+  TextSizeConstraints& constraints() { return constraints_; }
+  const TextSizeConstraints& constraints() const { return constraints_; }
 
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
+    // Convenience call to automatically apply truncation and padding bounds
+    std::string processedText =
+        constraints_.applyBounds(model->textData(index));
+
     auto element =
-        ftxui::text(model->textData(index)) | ftxui::color(text_color_);
+        ftxui::text(std::move(processedText)) | ftxui::color(text_color_);
 
     // Apply visual alignment properties
     switch (alignment_) {
@@ -58,16 +69,15 @@ class StyledTextDelegate : public ItemDelegate {
   // Returns the width matching the string length, defaulting to 1 height block
   ftxui::Dimensions sizeHint(const ModelIndex& index,
                              const AbstractItemModel* model) const override {
-    std::string textStr = model->textData(index);
-    int dynamicWidth = static_cast<int>(textStr.length());
-
-    // Sensible fallback: guarantee at least 1 character cell footprint
-    return ftxui::Dimensions{std::max(1, dynamicWidth), 1};
+    // Convenience call to resolve aggregate cell spatial demands
+    int finalWidth = constraints_.calculateWidthHint(model->textData(index));
+    return ftxui::Dimensions{std::max(1, finalWidth), 1};
   }
 
  private:
   Alignment alignment_;
   ftxui::Color text_color_;
+  TextSizeConstraints constraints_;  // Dedicated layout configuration profile
 };
 
 class CheckBoxDelegate : public ItemDelegate {
