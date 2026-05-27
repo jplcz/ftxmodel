@@ -44,3 +44,8 @@ add_executable(fs_model_app fs_model_app.cpp)
 target_link_libraries(fs_model_app PRIVATE ftxmodel)
 target_compile_features(fs_model_app PRIVATE cxx_std_20)
 target_compile_options(fs_model_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
+
+add_executable(multi_router_delegate_app multi_router_delegate_app.cpp)
+target_link_libraries(multi_router_delegate_app PRIVATE ftxmodel)
+target_compile_features(multi_router_delegate_app PRIVATE cxx_std_20)
+target_compile_options(multi_router_delegate_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
