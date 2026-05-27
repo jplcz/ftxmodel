@@ -17,8 +17,52 @@ class TreeView : public AbstractGridLikeItemView {
   // Tracks which nodes are currently expanded using their internal pointer
   // address
   std::set<void*> expanded_nodes_;
-
   int selected_linear_row_ = 0;
+
+  // ========================================================================
+  // Dynamic Column Width Processing Pass
+  // ========================================================================
+  int calculateOptimalColumnWidth(int colIndex) const {
+    int maxColumnWidth = 0;
+
+    // Account for Header text constraints if enabled
+    if (showHeaders()) {
+      std::any hData = model()->headerData(colIndex, Orientation::Horizontal,
+                                           ItemRole::DisplayRole);
+      if (hData.type() == typeid(std::string)) {
+        maxColumnWidth = std::max(
+            maxColumnWidth,
+            static_cast<int>(std::any_cast<std::string>(hData).length()));
+      }
+    }
+
+    // Scan visible flattened layout rows
+    for (const auto& indexCol0 : flattened_indices_) {
+      if (colIndex == 0) {
+        // Column 0 is a special composite: Indentation + Handle Prefix +
+        // Delegate Data
+        int depth = calculateDepth(indexCol0);
+        int prefixWidth =
+            (depth * 4) + 4;  // 4 spaces per depth level + 4 chars for "[+] "
+
+        ftxui::Dimensions cellHint =
+            itemDelegate()->sizeHint(indexCol0, model());
+        maxColumnWidth = std::max(maxColumnWidth, prefixWidth + cellHint.dimx);
+      } else {
+        // Side data columns pull their precise index coordinates relative to
+        // their parent
+        ModelIndex targetColIdx = model()->index(indexCol0.row(), colIndex,
+                                                 model()->parent(indexCol0));
+        if (targetColIdx.isValid()) {
+          ftxui::Dimensions cellHint =
+              itemDelegate()->sizeHint(targetColIdx, model());
+          maxColumnWidth = std::max(maxColumnWidth, cellHint.dimx);
+        }
+      }
+    }
+
+    return maxColumnWidth + 1;  // Append a 1-character padding buffer
+  }
 
  public:
   explicit TreeView(std::function<void()> refreshCb)
@@ -125,14 +169,22 @@ class TreeView : public AbstractGridLikeItemView {
     ModelIndex activeIndex = selectionModel()->currentIndex();
     int totalCols = model()->columnCount();
 
+    // Compute dynamic uniform column widths based on visible nodes
+    std::vector<int> colWidths((size_t)totalCols, 0);
+    for (int c = 0; c < totalCols; ++c) {
+      colWidths[(size_t)c] = calculateOptimalColumnWidth(c);
+    }
+
     // Optional Heterogeneous Header Generation
     if (showHeaders()) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
         headerRow.emplace_back(headerDelegate()->createHeaderWidget(
-            c, Orientation::Horizontal, model()));
+                                   c, Orientation::Horizontal, model()) |
+                               ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN,
+                                           colWidths[(size_t)c] - 1));
         if (c < totalCols - 1) {
-          headerRow.push_back(ftxui::separatorLight());
+          headerRow.emplace_back(ftxui::separatorLight());
         }
       }
       gridMatrix.emplace_back(std::move(headerRow));
@@ -163,7 +215,10 @@ class TreeView : public AbstractGridLikeItemView {
           ftxui::text(indentStr + nodeHandle) | ftxui::dim;
       ftxui::Element itemContent =
           itemDelegate()->createWidget(indexCol0, model());
-      ftxui::Element anchorCell = ftxui::hbox({structuralPrefix, itemContent});
+      ftxui::Element anchorCell =
+          ftxui::hbox({structuralPrefix, itemContent}) |
+          ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN, colWidths[0] - 1);
+
       // Determine row selection state globally for highlight synchronization
       bool isRowSelected =
           (indexCol0.row() == activeIndex.row() &&
@@ -197,6 +252,10 @@ class TreeView : public AbstractGridLikeItemView {
         ftxui::Element sideCell =
             itemDelegate()->createWidget(targetColIdx, model());
 
+        // Enforce side column uniform width restrictions
+        sideCell = sideCell | ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN,
+                                          colWidths[(size_t)c] - 1);
+
         // Sync highlight across all elements on this line
         if (isRowSelected) {
           sideCell = sideCell | ftxui::bgcolor(ftxui::Color::Blue) |
@@ -211,7 +270,7 @@ class TreeView : public AbstractGridLikeItemView {
             sep = sep | ftxui::bgcolor(ftxui::Color::Blue) |
                   ftxui::color(ftxui::Color::White);
           }
-          uiRow.push_back(sep);
+          uiRow.emplace_back(sep);
         }
       }
 

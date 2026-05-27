@@ -13,6 +13,40 @@ class TableView : public AbstractGridLikeItemView {
  private:
   std::function<void()> trigger_ftxui_refresh_;
 
+  // Helper calculation loop to find the widest cell footprint constraint in a
+  // specific column track
+  int calculateOptimalColumnWidth(int colIndex) const {
+    int maxColumnWidth = 0;
+    int totalRows = model()->rowCount();
+
+    // Check the header's size requirements first if headers are turned on
+    if (showHeaders()) {
+      // HeaderDelegate doesn't have a formal sizeHint API, but we can safely
+      // estimate its demand using its string data length
+      std::any hData = model()->headerData(colIndex, Orientation::Horizontal,
+                                           ItemRole::DisplayRole);
+      if (hData.type() == typeid(std::string)) {
+        maxColumnWidth = std::max(
+            maxColumnWidth,
+            static_cast<int>(std::any_cast<std::string>(hData).length()) + 2);
+      }
+    }
+
+    // Query the item delegate for every active cell row in this column
+    for (int r = 0; r < totalRows; ++r) {
+      ModelIndex index = model()->index(r, colIndex);
+      if (index.isValid()) {
+        // Poll our newly integrated delegate sizeHint API component loop
+        ftxui::Dimensions hint = itemDelegate()->sizeHint(index, model());
+        maxColumnWidth = std::max(maxColumnWidth, hint.dimx);
+      }
+    }
+
+    // Add a 1-character padding buffer to prevent text clipping against layout
+    // borders
+    return maxColumnWidth + 1;
+  }
+
  public:
   explicit TableView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
@@ -80,14 +114,23 @@ class TableView : public AbstractGridLikeItemView {
     int totalCols = model()->columnCount();
     ModelIndex focusedIndex = selectionModel()->currentIndex();
 
+    // Precalculate optimal column layout widths
+    std::vector<int> colWidths((size_t)totalCols, 0);
+    for (int c = 0; c < totalCols; ++c) {
+      colWidths[(size_t)c] = calculateOptimalColumnWidth(c);
+    }
+
     // Optional Horizontal Headers Pass
     if (showHeaders()) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
-        // COMPONENT INTERACTION: Ask header delegate to construct the visual
-        // block
-        headerRow.emplace_back(headerDelegate()->createHeaderWidget(
-            c, Orientation::Horizontal, model()));
+        ftxui::Element hWidget = headerDelegate()->createHeaderWidget(
+            c, Orientation::Horizontal, model());
+
+        // Enforce calculated uniform column constraint limits!
+        hWidget = hWidget |
+                  ftxui::size(ftxui::WIDTH, ftxui::EQUAL, colWidths[(size_t)c]);
+        headerRow.emplace_back(hWidget);
 
         // Inject a light separator between headers, but skip after the final
         // column
@@ -106,6 +149,10 @@ class TableView : public AbstractGridLikeItemView {
 
         // Invoke user delegate
         ftxui::Element cellWidget = itemDelegate()->createWidget(idx, model());
+
+        // Enforce calculated uniform column size metrics down across cells!
+        cellWidget = cellWidget | ftxui::size(ftxui::WIDTH, ftxui::EQUAL,
+                                              colWidths[(size_t)c]);
 
         // Check selection state for the entire row to handle background
         // rendering

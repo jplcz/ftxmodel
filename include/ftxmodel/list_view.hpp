@@ -54,22 +54,35 @@ class ListView : public AbstractGridLikeItemView {
     if (!model() || !itemDelegate()) {
       return ftxui::text("Missing model or delegate bindings.");
     }
+    int totalRows = model()->rowCount();
+    int activeRow = selectionModel()->currentIndex().row();
+
+    // Compute List Panel Box Width Limit
+    int optimalWidth = 0;
+    for (int r = 0; r < totalRows; ++r) {
+      optimalWidth = std::max(
+          optimalWidth,
+          itemDelegate()->sizeHint(model()->index(r, 0), model()).dimx);
+    }
+    optimalWidth = std::max(optimalWidth + 2,
+                            15);  // Snug minimum constraint limit boundary
+
     std::vector<ftxui::Element> renderedRows;
 
     if (showHeaders()) {
       // Pulls directly from the base class via headerDelegate()
       ftxui::Element headerWidget = headerDelegate()->createHeaderWidget(
           0, Orientation::Horizontal, model());
-      renderedRows.push_back(headerWidget | ftxui::flex_shrink);
+      renderedRows.push_back(
+          headerWidget | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth));
       renderedRows.push_back(ftxui::separator());
     }
 
-    int activeRow = selectionModel()->currentIndex().row();
-    int totalRows = model()->rowCount();
-
     for (int r = 0; r < totalRows; ++r) {
       ModelIndex idx = model()->index(r, 0);
-      ftxui::Element cellWidget = itemDelegate()->createWidget(idx, model());
+      ftxui::Element cellWidget =
+          itemDelegate()->createWidget(idx, model()) |
+          ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth);
 
       // Highlight selection
       if (r == activeRow) {

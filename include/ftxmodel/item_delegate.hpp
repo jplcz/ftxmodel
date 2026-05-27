@@ -16,6 +16,18 @@ class ItemDelegate {
   // Generates a visual component for a specific model cell
   virtual ftxui::Element createWidget(const ModelIndex& index,
                                       const AbstractItemModel* model) const = 0;
+
+  // Returns the preferred width and height dimensions for a given cell.
+  // We use standard ftxui::Dimensions (which wraps width and height ints).
+  virtual ftxui::Dimensions sizeHint(const ModelIndex& index,
+                                     const AbstractItemModel* model) const {
+    std::ignore = index;
+    std::ignore = model;
+
+    // Default fallback: 0 means "no opinion / let the layout engine decide
+    // auto-scaling"
+    return ftxui::Dimensions{0, 1};
+  }
 };
 
 class StyledTextDelegate : public ItemDelegate {
@@ -41,6 +53,16 @@ class StyledTextDelegate : public ItemDelegate {
       default:
         return element;
     }
+  }
+
+  // Returns the width matching the string length, defaulting to 1 height block
+  ftxui::Dimensions sizeHint(const ModelIndex& index,
+                             const AbstractItemModel* model) const override {
+    std::string textStr = model->textData(index);
+    int dynamicWidth = static_cast<int>(textStr.length());
+
+    // Sensible fallback: guarantee at least 1 character cell footprint
+    return ftxui::Dimensions{std::max(1, dynamicWidth), 1};
   }
 
  private:
@@ -72,6 +94,12 @@ class CheckBoxDelegate : public ItemDelegate {
       return ftxui::text("[ ]") | ftxui::dim | ftxui::center;
     }
   }
+
+  // Toggles are consistently 3 characters wide and 1 row tall
+  ftxui::Dimensions sizeHint(const ModelIndex&,
+                             const AbstractItemModel*) const override {
+    return ftxui::Dimensions{3, 1};
+  }
 };
 
 class ProgressBarDelegate : public ItemDelegate {
@@ -79,10 +107,19 @@ class ProgressBarDelegate : public ItemDelegate {
   float max_value_;
   ftxui::Color bar_color_;
 
+  // New configurable layout parameters
+  int text_width_;
+  int gauge_width_;
+
  public:
   explicit ProgressBarDelegate(float maxValue = 100.0f,
-                               ftxui::Color barColor = ftxui::Color::Cyan)
-      : max_value_(maxValue), bar_color_(barColor) {}
+                               ftxui::Color barColor = ftxui::Color::Cyan,
+                               int textWidth = 5,
+                               int gaugeWidth = 12)
+      : max_value_(maxValue),
+        bar_color_(barColor),
+        text_width_(textWidth),
+        gauge_width_(gaugeWidth) {}
 
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
@@ -97,19 +134,24 @@ class ProgressBarDelegate : public ItemDelegate {
       currentVal = static_cast<float>(std::any_cast<int>(rawData));
     }
 
-    // Calculate filling percentage bound safely between 0.0 and 1.0
     float percentage = (max_value_ > 0.0f) ? (currentVal / max_value_) : 0.0f;
     percentage = std::clamp(percentage, 0.0f, 1.0f);
 
-    // Build a split view: numeric readout text paired with a graphical
-    // rendering engine
     std::string percentageText =
         std::to_string(static_cast<int>(percentage * 100)) + "%";
 
-    return ftxui::hbox({ftxui::text(percentageText) |
-                            ftxui::size(ftxui::WIDTH, ftxui::EQUAL, 5),
-                        ftxui::gauge(percentage) | ftxui::color(bar_color_) |
-                            ftxui::size(ftxui::WIDTH, ftxui::EQUAL, 12)});
+    // Build the visual block using our configurable member variables
+    return ftxui::hbox(
+        {ftxui::text(percentageText) |
+             ftxui::size(ftxui::WIDTH, ftxui::EQUAL, text_width_),
+         ftxui::gauge(percentage) | ftxui::color(bar_color_) |
+             ftxui::size(ftxui::WIDTH, ftxui::EQUAL, gauge_width_)});
+  }
+
+  // Calculates the aggregate cell demand on demand dynamically (Text + Gauge)
+  ftxui::Dimensions sizeHint(const ModelIndex&,
+                             const AbstractItemModel*) const override {
+    return ftxui::Dimensions{text_width_ + gauge_width_, 1};
   }
 };
 
