@@ -60,7 +60,7 @@ class FileTreeModel : public AbstractItemModel {
     if (row >= static_cast<int>(parentNode->children.size())) {
       return {};
     }
-    return createIndex(row, col, parentNode->children[row].get());
+    return createIndex(row, col, parentNode->children[(size_t)row].get());
   }
 
   ModelIndex parent(const ModelIndex& child) const override {
@@ -137,7 +137,8 @@ int main() {
   auto appLayout = ftxui::Renderer(appController, [&]() {
     return ftxui::vbox({ftxui::text(" Interactive Collapsible TreeView ") |
                             ftxui::bold | ftxui::center,
-                        ftxui::separator(), treeView.render(),
+                        ftxui::separator(),
+                        treeView.render() | ftxui::xflex_grow,
                         ftxui::separator(),
                         ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump "
                                     "Parent | [↑/↓] Navigate") |

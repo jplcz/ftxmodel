@@ -20,14 +20,14 @@ class TaskTableModel : public AbstractItemModel {
 
  public:
   ModelIndex index(int r, int c, const ModelIndex& p) const override {
-    if (p.isValid() || r < 0 || r >= tasks_.size() || c < 0 || c >= 3) {
+    if (p.isValid() || r < 0 || r >= (int)tasks_.size() || c < 0 || c >= 3) {
       return {};
     }
-    return createIndex(r, c, (void*)&tasks_[r]);
+    return createIndex(r, c, (void*)&tasks_[(size_t)r]);
   }
   ModelIndex parent(const ModelIndex&) const override { return {}; }
   int rowCount(const ModelIndex& p) const override {
-    return p.isValid() ? 0 : tasks_.size();
+    return p.isValid() ? 0 : (int)tasks_.size();
   }
   int columnCount(const ModelIndex&) const override { return 3; }
 
@@ -35,7 +35,7 @@ class TaskTableModel : public AbstractItemModel {
     if (!index.isValid()) {
       return {};
     }
-    const auto& item = tasks_[index.row()];
+    const auto& item = tasks_[(size_t)index.row()];
 
     if (index.column() == 0 && role == ItemRole::DisplayRole) {
       return item.name;

@@ -28,8 +28,14 @@ target_compile_options(list_view_app PRIVATE -Wall -Werror -Wextra -Wconversion 
 add_executable(table_view_app table_view_app.cpp)
 target_link_libraries(table_view_app PRIVATE ftxmodel)
 target_compile_features(table_view_app PRIVATE cxx_std_20)
+target_compile_options(table_view_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
 
 add_executable(tree_view_app tree_view_app.cpp)
 target_link_libraries(tree_view_app PRIVATE ftxmodel)
 target_compile_features(tree_view_app PRIVATE cxx_std_20)
+target_compile_options(tree_view_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)
 
+add_executable(task_view_tree_app task_view_tree_app.cpp)
+target_link_libraries(task_view_tree_app PRIVATE ftxmodel)
+target_compile_features(task_view_tree_app PRIVATE cxx_std_20)
+target_compile_options(task_view_tree_app PRIVATE -Wall -Werror -Wextra -Wconversion -Wsign-conversion)

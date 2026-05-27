@@ -86,10 +86,16 @@ class TableView : public AbstractGridLikeItemView {
       for (int c = 0; c < totalCols; ++c) {
         // COMPONENT INTERACTION: Ask header delegate to construct the visual
         // block
-        headerRow.push_back(headerDelegate()->createHeaderWidget(
+        headerRow.emplace_back(headerDelegate()->createHeaderWidget(
             c, Orientation::Horizontal, model()));
+
+        // Inject a light separator between headers, but skip after the final
+        // column
+        if (c < totalCols - 1) {
+          headerRow.emplace_back(ftxui::separatorLight());
+        }
       }
-      gridMatrix.push_back(std::move(headerRow));
+      gridMatrix.emplace_back(std::move(headerRow));
     }
 
     // 2D Data Rows Pass
@@ -101,19 +107,41 @@ class TableView : public AbstractGridLikeItemView {
         // Invoke user delegate
         ftxui::Element cellWidget = itemDelegate()->createWidget(idx, model());
 
+        // Check selection state for the entire row to handle background
+        // rendering
+        bool isRowSelected = (r == focusedIndex.row());
+
         // Decorate cell widget based on active selection states
         if (idx == focusedIndex) {
           // Deep focus on the precise selected cell coordinates
           cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::Blue) |
                        ftxui::color(ftxui::Color::White) | ftxui::bold;
-        } else if (r == focusedIndex.row()) {
+        } else if (isRowSelected) {
           // Light row tracking highlight to visually guide across data columns
           cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::GrayDark);
         }
 
-        uiRow.push_back(cellWidget);
+        uiRow.emplace_back(cellWidget);
+
+        // Inject vertical separator between cells, skipping after the last
+        // column
+        if (c < totalCols - 1) {
+          auto sep = ftxui::separatorLight();
+
+          // Color the separator background to match the row's selection state
+          if (idx == focusedIndex ||
+              (r == focusedIndex.row() && c == focusedIndex.column() - 1)) {
+            // Separator is adjacent to the uniquely focused cell
+            sep = sep | ftxui::bgcolor(ftxui::Color::Blue);
+          } else if (isRowSelected) {
+            // Separator is part of the general row selection guide track
+            sep = sep | ftxui::bgcolor(ftxui::Color::GrayDark);
+          }
+
+          uiRow.push_back(sep);
+        }
       }
-      gridMatrix.push_back(std::move(uiRow));
+      gridMatrix.emplace_back(std::move(uiRow));
     }
 
     // Returns perfectly aligned 2D terminal grid canvas boundary box
