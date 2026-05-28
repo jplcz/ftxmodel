@@ -188,4 +188,29 @@ struct ModelIndex {
       nullptr; /**< Linked source of truth model authority layer. */
 };
 
+struct UniqueNodeIdHash {
+  std::size_t operator()(const UniqueNodeId& id) const noexcept {
+    return std::visit(
+        []<typename T0>(const T0& value) -> std::size_t {
+          using T = std::decay_t<T0>;
+          if constexpr (std::is_same_v<T, const void*>) {
+            return std::hash<const void*>{}(value);
+          } else if constexpr (std::is_same_v<T, std::int64_t>) {
+            return std::hash<std::int64_t>{}(value);
+          } else if constexpr (std::is_same_v<T, std::string>) {
+            return std::hash<std::string>{}(value);
+          }
+          return 0;
+        },
+        id);
+  }
+};
+
+struct UniqueNodeIdEqual {
+  bool operator()(const UniqueNodeId& lhs,
+                  const UniqueNodeId& rhs) const noexcept {
+    return lhs == rhs;
+  }
+};
+
 }  // namespace ftxmodel

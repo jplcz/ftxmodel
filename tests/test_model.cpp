@@ -5,6 +5,7 @@
 #include <ftxmodel/abstract_list_model.hpp>
 #include <ftxmodel/abstract_proxy_model.hpp>
 #include <ftxmodel/file_system_model.hpp>
+#include <ftxmodel/flatten_tree_proxy_model.hpp>
 #include <ftxmodel/identity_proxy_model.hpp>
 #include <ftxmodel/item_delegate.hpp>
 #include <ftxmodel/item_selection_model.hpp>
