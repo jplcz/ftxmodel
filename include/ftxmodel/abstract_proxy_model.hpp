@@ -66,6 +66,20 @@ class AbstractProxyModel : public AbstractItemModel {
     return m_source ? m_source->flags(index) : NoItemFlags;
   }
 
+  UniqueNodeId uniqueId(const ModelIndex& index) const override {
+    return m_source ? m_source->uniqueId(mapFromSource(index)) : UniqueNodeId();
+  }
+
+  ModelIndex findIndexById(
+      const UniqueNodeId& targetId,
+      const ModelIndex& parent = ModelIndex()) const override {
+    const auto sourceParent = mapToSource(parent);
+    const auto result = m_source
+                            ? m_source->findIndexById(targetId, sourceParent)
+                            : ModelIndex();
+    return mapFromSource(result);
+  }
+
   virtual ModelIndex mapFromSource(const ModelIndex& child) const = 0;
   virtual ModelIndex mapToSource(const ModelIndex& child) const = 0;
 
