@@ -54,7 +54,7 @@ class StringListModel : public AbstractListModel {
     }
 
     if (value.type() == typeid(std::string)) {
-      *items_[index.row()] = std::any_cast<std::string>(value);
+      *items_[static_cast<size_t>(index.row())] = std::any_cast<std::string>(value);
 
       // Notify views to repaint this specific index slot
       dataChanged(index, index);

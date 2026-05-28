@@ -108,12 +108,12 @@ struct ModelIndex {
   /**
    * @brief Returns the row position tracker slot location.
    */
-  constexpr int row() const noexcept { return m_row; }
+  [[nodiscard]] constexpr int row() const noexcept { return m_row; }
 
   /**
    * @brief Returns the column position tracker slot location.
    */
-  constexpr int column() const noexcept { return m_column; }
+  [[nodiscard]] constexpr int column() const noexcept { return m_column; }
 
   /**
    * @brief Returns the internal model node memory optimizations pointer
@@ -121,7 +121,7 @@ struct ModelIndex {
    * @warning Consumers outside concrete subclass model definitions should avoid
    * inspect parsing this value directly. Treat it as an opaque token pass.
    */
-  constexpr void* internalPointer() const noexcept {
+  [[nodiscard]] constexpr void* internalPointer() const noexcept {
     return m_internal_pointer;
   }
 
@@ -131,7 +131,7 @@ struct ModelIndex {
    * @return true if row and column bounds are non-negative and a target model
    * relationship is configured.
    */
-  constexpr bool isValid() const noexcept {
+  [[nodiscard]] constexpr bool isValid() const noexcept {
     return m_row >= 0 && m_column >= 0 && m_model != nullptr;
   }
 
@@ -139,7 +139,8 @@ struct ModelIndex {
    * @brief Piecewise equality comparison pass verifying coordinate properties
    * match identically.
    */
-  constexpr bool operator==(const ModelIndex& rhs) const noexcept {
+  [[nodiscard]] constexpr bool operator==(
+      const ModelIndex& rhs) const noexcept {
     return m_row == rhs.m_row && m_column == rhs.m_column &&
            m_internal_pointer == rhs.m_internal_pointer &&
            m_model == rhs.m_model;
@@ -151,7 +152,7 @@ struct ModelIndex {
    * @return ModelIndex The parent handle, or an invalid empty token if this
    * index has no parent.
    */
-  ModelIndex parent() const;
+  [[nodiscard]] ModelIndex parent() const;
 
   /**
    * @brief Inline convenience route extracting cell variant data payloads based
@@ -160,13 +161,13 @@ struct ModelIndex {
    * @return std::any The encapsulated cell details, or an empty `std::any` if
    * lookup fails.
    */
-  std::any data(ItemRole role = ItemRole::DisplayRole) const;
+  [[nodiscard]] std::any data(ItemRole role = ItemRole::DisplayRole) const;
 
   /**
    * @brief Inline convenience route reading permissions bitmask behaviors for
    * this cell handle block.
    */
-  ItemFlags flags() const;
+  [[nodiscard]] ItemFlags flags() const;
 
   /**
    * @brief Inline convenience route looking up the data-first persistent
@@ -174,7 +175,9 @@ struct ModelIndex {
    * @return UniqueNodeId The stable identifier used for UI view position
    * synchronization across data reloads.
    */
-  UniqueNodeId uniqueId() const;
+  [[nodiscard]] UniqueNodeId uniqueId() const;
+
+  [[nodiscard]] const AbstractItemModel* model() const { return m_model; }
 
  private:
   int m_row = -1;    /**< Sequential row boundary offset layout locator. */
