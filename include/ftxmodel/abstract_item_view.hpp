@@ -1,4 +1,6 @@
 #pragma once
+#include <utility>
+
 #include "abstract_item_model.hpp"
 #include "ftxui/component/component_base.hpp"
 #include "header_delegate.hpp"
@@ -10,7 +12,7 @@ namespace ftxmodel {
 class AbstractItemView : public ftxui::ComponentBase, public sigslot::observer {
  public:
   AbstractItemView() = default;
-  virtual ~AbstractItemView() = default;
+  ~AbstractItemView() override = default;
 
   // Attaches a data backend to this view interface
   virtual void setModel(AbstractItemModel* model) {
@@ -27,14 +29,16 @@ class AbstractItemView : public ftxui::ComponentBase, public sigslot::observer {
 
   // Attaches a presentation layout customizer to this view interface
   virtual void setItemDelegate(std::shared_ptr<ItemDelegate> delegate) {
-    delegate_ = delegate;
+    delegate_ = std::move(delegate);
   }
 
-  AbstractItemModel* model() const { return model_; }
-  ItemSelectionModel* selectionModel() const { return selection_model_.get(); }
-  ItemDelegate* itemDelegate() const { return delegate_.get(); }
+  [[nodiscard]] AbstractItemModel* model() const { return model_; }
+  [[nodiscard]] ItemSelectionModel* selectionModel() const {
+    return selection_model_.get();
+  }
+  [[nodiscard]] ItemDelegate* itemDelegate() const { return delegate_.get(); }
 
-  bool Focusable() const override { return true; }
+  [[nodiscard]] bool Focusable() const override { return true; }
 
  protected:
   // This acts as our slot callback
@@ -60,19 +64,21 @@ class AbstractGridLikeItemView : public AbstractItemView {
 
  public:
   AbstractGridLikeItemView() = default;
-  virtual ~AbstractGridLikeItemView() = default;
+  ~AbstractGridLikeItemView() override = default;
 
   // --- Header Management ---
-  void setHeaderDelegate(std::shared_ptr<HeaderDelegate> delegate) {
+  void setHeaderDelegate(const std::shared_ptr<HeaderDelegate>& delegate) {
     if (delegate) {
       header_delegate_ = delegate;
     }
   }
 
-  HeaderDelegate* headerDelegate() const { return header_delegate_.get(); }
+  [[nodiscard]] HeaderDelegate* headerDelegate() const {
+    return header_delegate_.get();
+  }
 
   void setShowHeaders(bool show) { show_headers_ = show; }
-  bool showHeaders() const { return show_headers_; }
+  [[nodiscard]] bool showHeaders() const { return show_headers_; }
 };
 
 }  // namespace ftxmodel
