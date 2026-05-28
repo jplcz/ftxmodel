@@ -215,3 +215,60 @@ TEST_F(FlattenTreeProxyModelTest,
   EXPECT_EQ(proxy_visible_idx.row(),
             1);  // Discovered sitting on linear row index 1
 }
+
+TEST_F(FlattenTreeProxyModelTest, ExpandAllOpensDeepestHierarchicalLayers) {
+  // Initially only 2 root folders are visible
+  ASSERT_EQ(proxy_model->rowCount(ModelIndex()), 2);
+
+  // Trigger global expansion sweep
+  proxy_model->expandAll();
+
+  // Visual layout size must expand to encompass EVERYTHING:
+  // Folder_A, File_A_1, File_A_2, Folder_B -> Total = 4 rows
+  EXPECT_EQ(proxy_model->rowCount(ModelIndex()), 4);
+
+  // Verify everything returns true for expansion states
+  EXPECT_TRUE(proxy_model->isExpanded(0));  // Folder_A is open
+
+  // File_A_1 is sitting at row 1. Since it's a leaf node (has no children),
+  // isExpanded will report false, which is perfectly accurate!
+  EXPECT_FALSE(proxy_model->isExpanded(1));
+}
+
+TEST_F(FlattenTreeProxyModelTest,
+       ExpandBranchOpensDeepDescendantsWithoutAffectingSiblings) {
+  // Setup: Let's assume an extra nested layer exists for this test context.
+  // If we run expandBranch on Row 0 ("Folder_A"):
+  proxy_model->expandBranch(0);
+
+  // Folder_A (Row 0), File_A_1 (Row 1), File_A_2 (Row 2), Folder_B (Row 3)
+  ASSERT_EQ(proxy_model->rowCount(ModelIndex()), 4);
+
+  // Verify that Folder_A is flagged open
+  EXPECT_TRUE(proxy_model->isExpanded(0));
+
+  // Verify that Folder_B (now at Row 3) was completely untouched by the
+  // recursive sweep
+  EXPECT_FALSE(proxy_model->isExpanded(3));
+}
+
+TEST_F(FlattenTreeProxyModelTest,
+       CollapseBranchShadowsDescendantsAndRetainsNestedState) {
+  // 1. Fully expand the entire tree structure
+  proxy_model->expandAll();
+  ASSERT_EQ(proxy_model->rowCount(ModelIndex()), 4);
+
+  // 2. Collapse the top-level Row 0 ("Folder_A")
+  proxy_model->collapseBranch(0);
+
+  // Layout should compress back down to just the 2 root elements
+  EXPECT_EQ(proxy_model->rowCount(ModelIndex()), 2);
+  EXPECT_EQ(proxy_model->textData(proxy_model->index(1, 0)), "Folder_B");
+
+  // 3. Re-expand Row 0 ("Folder_A")
+  proxy_model->expand(0);
+
+  // The proxy should instantly balloon back to 4 rows because the inner
+  // grandchild items remembered their open states under the shadow!
+  EXPECT_EQ(proxy_model->rowCount(ModelIndex()), 4);
+}

@@ -103,7 +103,84 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
     const ModelIndex sourceIndex = mapToSource(localIndex);
     const auto nodeId = sourceIndex.uniqueId();
     if (impl_->expanded_nodes.erase(nodeId) > 0) {
+      // Purge only if we'd overrun array size
+      if (impl_->expanded_nodes.size() >= impl_->flat_lookup_cache.size()) {
+        cleanStaleNodes(true);
+      }
       invalidate();
+    }
+  }
+
+  void collapseAll() {
+    impl_->ensureCache(this);
+    if (!impl_->expanded_nodes.empty()) {
+      impl_->expanded_nodes.clear();
+      invalidate();
+    }
+  }
+
+  /**
+   * @brief Recursively expands every single parent branch node inside the
+   * source model topology.
+   */
+  void expandAll() {
+    impl_->ensureCache(this);
+    impl_->expanded_nodes.clear();
+    impl_->gatherExpandAll(this, ModelIndex());
+    invalidate();
+  }
+  /**
+   * @brief Recursively expands a specific node and every single one of its
+   * hidden structural descendants.
+   * @param proxyRow The visual row position target inside the flat list space.
+   */
+  void expandBranch(const int proxyRow) {
+    impl_->ensureCache(this);
+    if (proxyRow < 0 ||
+        proxyRow >= static_cast<int>(impl_->flat_lookup_cache.size())) {
+      return;
+    }
+    // Map the visual list coordinate row down to its true nested Source handle
+    // position
+    ModelIndex proxyIdx = index(proxyRow, 0);
+    ModelIndex sourceIdx = mapToSource(proxyIdx);
+
+    if (!sourceIdx.isValid() || !sourceModel()->hasChildren(sourceIdx)) {
+      return;  // Fast escape boundary if it's a leaf node or empty
+    }
+
+    UniqueNodeId branchId = sourceModel()->uniqueId(sourceIdx);
+    impl_->expanded_nodes.insert(branchId);
+
+    impl_->gatherExpandAll(this, sourceIdx);
+    invalidate();
+  }
+
+  /**
+   * @brief Collapses a specific branch node, hiding it and all of its
+   * descendants from view.
+   * @param proxyRow The visual row position target inside the flat list space.
+   */
+  void collapseBranch(const int proxyRow) {
+    impl_->ensureCache(this);
+    if (proxyRow < 0 ||
+        proxyRow >= static_cast<int>(impl_->flat_lookup_cache.size())) {
+      return;
+    }
+
+    // Map visual list coordinate down to its true nested Source position
+    ModelIndex proxyIdx = index(proxyRow, 0);
+    ModelIndex sourceIdx = mapToSource(proxyIdx);
+
+    if (!sourceIdx.isValid() || !sourceModel()->hasChildren(sourceIdx)) {
+      return;  // Fast escape if it's a leaf node or empty
+    }
+
+    UniqueNodeId branchId = sourceModel()->uniqueId(sourceIdx);
+
+    if (impl_->expanded_nodes.erase(branchId) > 0) {
+      cleanStaleNodes(true);
+      invalidate();  // Rebuild the 1D visual timeline map exactly once
     }
   }
 
@@ -114,6 +191,39 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
   }
 
  private:
+  void cleanStaleNodes(bool skipInvalidate) {
+    if (!sourceModel()) {
+      // If the source model was completely detached, all expanded node states
+      // are stale!
+      impl_->expanded_nodes.clear();
+      if (!skipInvalidate) {
+        invalidate();
+      }
+      return;
+    }
+
+    std::unordered_set<UniqueNodeId, UniqueNodeIdHash, UniqueNodeIdEqual>
+        aliveIds;
+    impl_->gatherAllUniqueIds(this, ModelIndex(), aliveIds);
+
+    bool modified = false;
+    for (auto it = impl_->expanded_nodes.begin();
+         it != impl_->expanded_nodes.end();) {
+      if (!aliveIds.contains(*it)) {
+        // Safe erasure tracking during iteration loop
+        it = impl_->expanded_nodes.erase(it);
+        modified = true;
+      } else {
+        ++it;
+      }
+    }
+
+    // If anything was actually swept away, refresh our visual layouts
+    if (modified && !skipInvalidate) {
+      invalidate();
+    }
+  }
+
   struct Impl {
     // Set of visible expanded nodes
     std::unordered_set<UniqueNodeId, UniqueNodeIdHash, UniqueNodeIdEqual>
@@ -147,6 +257,43 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
         // Structural Descent check bound to UniqueNodeId matching contracts
         if (expanded_nodes.contains(nodeId) && src->hasChildren(srcIdx)) {
           rebuildFlatListRecursively(q, srcIdx);
+        }
+      }
+    }
+
+    void gatherExpandAll(const FlattenTreeProxyModel* q,
+                         const ModelIndex& sourceParent) {
+      const auto* src = q->sourceModel();
+      const int rows = src->rowCount(sourceParent);
+      for (int r = 0; r < rows; ++r) {
+        ModelIndex srcIdx = src->index(r, 0, sourceParent);
+        if (!srcIdx.isValid()) {
+          continue;
+        }
+        if (src->hasChildren(srcIdx)) {
+          expanded_nodes.insert(srcIdx.uniqueId());
+          gatherExpandAll(q, srcIdx);
+        }
+      }
+    }
+
+    void gatherAllUniqueIds(
+        const FlattenTreeProxyModel* q,
+        const ModelIndex& sourceParent,
+        std::unordered_set<UniqueNodeId, UniqueNodeIdHash, UniqueNodeIdEqual>&
+            aliveIds) {
+      const auto* src = q->sourceModel();
+      const int rows = src->rowCount(sourceParent);
+      for (int r = 0; r < rows; ++r) {
+        const ModelIndex srcIdx = src->index(r, 0, sourceParent);
+        if (!srcIdx.isValid()) {
+          continue;
+        }
+        if (src->hasChildren(srcIdx)) {
+          aliveIds.insert(src->uniqueId(srcIdx));
+
+          // Keep drilling down to collect nested sub-folder identities
+          gatherAllUniqueIds(q, srcIdx, aliveIds);
         }
       }
     }
