@@ -1,27 +1,12 @@
 #pragma once
 #include <any>
+#include <format>
 #include <sigslot/signal.hpp>
 #include <string>
 #include <string_view>
 #include "model_index.hpp"
 
 namespace ftxmodel {
-
-enum class ItemRole : int { DisplayRole, EditRole, ToolTipRole, CheckedRole };
-
-enum ItemFlag : int {
-  NoItemFlags = 0,
-  ItemIsEnabled = 1 << 0,
-  ItemIsSelectable = 1 << 1,
-  ItemIsEditable = 1 << 2,
-  ItemIsUserCheckable = 1 << 3
-};
-using ItemFlags = int;
-
-enum class Orientation {
-  Horizontal,  // Horizontal headers (Table column names)
-  Vertical     // Vertical headers (Table row numbers/names)
-};
 
 class AbstractItemModel {
  public:
@@ -93,6 +78,59 @@ class AbstractItemModel {
            ItemFlag::ItemIsSelectable;  // Default sensible fallback
   }
 
+  virtual UniqueNodeId uniqueId(const ModelIndex& index) const {
+    if (!index.isValid()) {
+      return {nullptr};
+    }
+    const auto roleIdData = data(index, ItemRole::UniqueIdentifierRole);
+    if (roleIdData.type() == typeid(UniqueNodeId)) {
+      return std::any_cast<UniqueNodeId>(roleIdData);
+    }
+    if (roleIdData.type() == typeid(std::string)) {
+      return {std::any_cast<std::string>(roleIdData)};
+    }
+    if (roleIdData.type() == typeid(int)) {
+      return {std::any_cast<int>(roleIdData)};
+    }
+    // Fall back to internal pointer address first
+    if (index.internalPointer()) {
+      return {index.internalPointer()};
+    }
+    // Final fallback via path
+    std::string pathString = "path:";
+    ModelIndex current = index;
+    while (current.isValid()) {
+      pathString = std::format("{}/{}", current.row(), pathString);
+      current = parent(current);
+    }
+    return {pathString};
+  }
+
+  virtual ModelIndex findIndexById(
+      const UniqueNodeId& targetId,
+      const ModelIndex& parent = ModelIndex()) const {
+    if (targetId == UniqueNodeId{nullptr}) {
+      return {};
+    }
+    const int rows = rowCount(parent);
+    for (int r = 0; r < rows; ++r) {
+      ModelIndex currentIdx = index(r, 0, parent);
+      if (!currentIdx.isValid()) {
+        continue;
+      }
+      if (uniqueId(currentIdx) == targetId) {
+        return currentIdx;
+      }
+      if (rowCount(currentIdx) > 0) {
+        ModelIndex childMath = findIndexById(targetId, currentIdx);
+        if (childMath.isValid()) {
+          return childMath;
+        }
+      }
+    }
+    return ModelIndex();
+  }
+
   // Helper to extract raw text safely for terminal rendering
   std::string textData(const ModelIndex& index,
                        ItemRole role = ItemRole::DisplayRole) const {
@@ -132,5 +170,21 @@ class AbstractItemModel {
   sigslot::signal_st<const ModelIndex&, int, int> beginRemoveColumns;
   sigslot::signal_st<> endRemoveColumns;
 };
+
+inline ModelIndex ModelIndex::parent() const {
+  return m_model ? m_model->parent(*this) : ModelIndex();
+}
+
+inline std::any ModelIndex::data(ItemRole role) const {
+  return m_model ? m_model->data(*this, role) : std::any();
+}
+
+inline ItemFlags ModelIndex::flags() const {
+  return m_model ? m_model->flags(*this) : ItemFlag::NoItemFlags;
+}
+
+inline UniqueNodeId ModelIndex::uniqueId() const {
+  return m_model ? m_model->uniqueId(*this) : UniqueNodeId{nullptr};
+}
 
 }  // namespace ftxmodel

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "abstract_item_view.hpp"
+#include "ftxui/component/event.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "header_delegate.hpp"
 
@@ -65,46 +66,75 @@ class TableView : public AbstractGridLikeItemView {
   // ========================================================================
   // 2D Navigation Controls
   // ========================================================================
-  void moveUp() override {
+  bool moveUp() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.row() > 0) {
       selectionModel()->setCurrentIndex(
           model()->index(current.row() - 1, current.column()));
       update();
+      return true;
     }
+    return false;
   }
 
-  void moveDown() override {
+  bool moveDown() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.row() < model()->rowCount() - 1) {
       selectionModel()->setCurrentIndex(
           model()->index(current.row() + 1, current.column()));
       update();
+      return true;
     }
+    return false;
   }
 
-  void moveLeft() override {
+  bool moveLeft() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.column() > 0) {
       selectionModel()->setCurrentIndex(
           model()->index(current.row(), current.column() - 1));
       update();
+      return true;
     }
+    return false;
   }
 
-  void moveRight() override {
+  bool moveRight() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.column() < model()->columnCount() - 1) {
       selectionModel()->setCurrentIndex(
           model()->index(current.row(), current.column() + 1));
       update();
+      return true;
     }
+    return false;
+  }
+
+  bool OnEvent(ftxui::Event event) override {
+    if (event == ftxui::Event::ArrowUp) {
+      if (moveUp()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowDown) {
+      if (moveDown()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowLeft) {
+      if (moveLeft()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowRight) {
+      if (moveRight()) {
+        return true;
+      }
+    }
+    return AbstractGridLikeItemView::OnEvent(event);
   }
 
   // ========================================================================
   // Rendering Logic
   // ========================================================================
-  ftxui::Element render() override {
+  ftxui::Element OnRender() override {
     if (!model() || !itemDelegate()) {
       return ftxui::text("Missing model or delegate bindings.");
     }
@@ -163,6 +193,9 @@ class TableView : public AbstractGridLikeItemView {
           // Deep focus on the precise selected cell coordinates
           cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::Blue) |
                        ftxui::color(ftxui::Color::White) | ftxui::bold;
+          if (Focused()) {
+            cellWidget = cellWidget | ftxui::focus;
+          }
         } else if (isRowSelected) {
           // Light row tracking highlight to visually guide across data columns
           cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::GrayDark);
@@ -192,7 +225,8 @@ class TableView : public AbstractGridLikeItemView {
     }
 
     // Returns perfectly aligned 2D terminal grid canvas boundary box
-    return ftxui::gridbox(gridMatrix) | ftxui::border;
+    return ftxui::gridbox(gridMatrix) | ftxui::vscroll_indicator |
+           ftxui::frame | ftxui::border;
   }
 
  protected:

@@ -266,6 +266,11 @@ int main() {
     // Toggle active panel focus using the Tab key
     if (event == ftxui::Event::Tab) {
       activePanelIndex = (activePanelIndex + 1) % 2;
+      if (activePanelIndex == 0) {
+        tableView.TakeFocus();
+      } else {
+        treeView.TakeFocus();
+      }
       return true;
     }
 
@@ -307,8 +312,8 @@ int main() {
 
   // Decorate views with borders based on focus state
   auto appLayout = ftxui::Renderer(appController, [&]() {
-    ftxui::Element topTable = tableView.render();
-    ftxui::Element bottomTree = treeView.render();
+    ftxui::Element topTable = tableView.Render();
+    ftxui::Element bottomTree = treeView.Render();
 
     if (activePanelIndex == 0) {
       topTable = topTable | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;

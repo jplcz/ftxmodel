@@ -136,7 +136,7 @@ int main() {
     return vbox(
         {text(" FTXUI AbstractListModel Environment Framework Sync Node ") |
              bold | bgcolor(Color::GrayDark) | color(Color::White),
-         separator(), listView.render(), separator(),
+         separator(), listView.Render(), separator(),
          vbox({text(" Controls:") | bold,
                text("  • [Up/Down Arrows] : Navigate inside layout tree index "
                     "rows"),

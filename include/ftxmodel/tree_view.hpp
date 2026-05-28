@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "abstract_item_view.hpp"
+#include "ftxui/component/event.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "header_delegate.hpp"
 
@@ -16,7 +17,7 @@ class TreeView : public AbstractGridLikeItemView {
 
   // Tracks which nodes are currently expanded using their internal pointer
   // address
-  std::set<void*> expanded_nodes_;
+  std::set<UniqueNodeId> expanded_nodes_;
   int selected_linear_row_ = 0;
 
   // ========================================================================
@@ -78,64 +79,96 @@ class TreeView : public AbstractGridLikeItemView {
   // ========================================================================
   // Keyboard Navigation Mapping
   // ========================================================================
-  void moveUp() {
+  bool moveUp() {
     if (selected_linear_row_ > 0) {
       selected_linear_row_--;
       selectionModel()->setCurrentIndex(
           flattened_indices_[(size_t)selected_linear_row_]);
       update();
+      return true;
     }
+    return false;
   }
 
-  void moveDown() {
+  bool moveDown() {
     if (selected_linear_row_ <
         static_cast<int>(flattened_indices_.size()) - 1) {
       selected_linear_row_++;
       selectionModel()->setCurrentIndex(
           flattened_indices_[(size_t)selected_linear_row_]);
       update();
+      return true;
     }
+    return false;
   }
 
   // Right Arrow: Expand current item if it has children
-  void moveRight() {
+  bool moveRight() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.isValid() && model()->hasChildren(current)) {
-      void* ptr = current.internalPointer();
-      if (expanded_nodes_.find(ptr) == expanded_nodes_.end()) {
-        expanded_nodes_.insert(ptr);
+      const auto nodeId = current.uniqueId();
+      if (expanded_nodes_.find(nodeId) == expanded_nodes_.end()) {
+        expanded_nodes_.insert(nodeId);
         update();  // Force flattening recalculation
       }
+      return true;
     }
+    return false;
   }
 
   // Left Arrow: Collapse current item, or jump up to its parent if already
   // collapsed
-  void moveLeft() {
+  bool moveLeft() {
     ModelIndex current = selectionModel()->currentIndex();
     if (!current.isValid()) {
-      return;
+      return false;
     }
 
-    void* ptr = current.internalPointer();
-    if (expanded_nodes_.find(ptr) != expanded_nodes_.end()) {
+    const auto nodeId = current.uniqueId();
+    auto nodeId_iter = expanded_nodes_.find(nodeId);
+
+    if (nodeId_iter != expanded_nodes_.end()) {
       // Node is open, close it
-      expanded_nodes_.erase(ptr);
+      expanded_nodes_.erase(nodeId_iter);
       update();
+      return true;
     } else {
       // Node is already closed, jump focus smoothly up to its structural parent
       ModelIndex parentIdx = model()->parent(current);
       if (parentIdx.isValid()) {
-        auto it = std::find(flattened_indices_.begin(),
-                            flattened_indices_.end(), parentIdx);
+        const auto it = std::find(flattened_indices_.begin(),
+                                  flattened_indices_.end(), parentIdx);
         if (it != flattened_indices_.end()) {
           selected_linear_row_ =
               static_cast<int>(std::distance(flattened_indices_.begin(), it));
           selectionModel()->setCurrentIndex(parentIdx);
           update();
         }
+        return true;
+      }
+      return false;
+    }
+  }
+
+  bool OnEvent(ftxui::Event event) override {
+    if (event == ftxui::Event::ArrowUp) {
+      if (moveUp()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowDown) {
+      if (moveDown()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowLeft) {
+      if (moveLeft()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowRight) {
+      if (moveRight()) {
+        return true;
       }
     }
+    return AbstractGridLikeItemView::OnEvent(event);
   }
 
   // ========================================================================
@@ -159,7 +192,7 @@ class TreeView : public AbstractGridLikeItemView {
   // ========================================================================
   // Layout Compilation Pass
   // ========================================================================
-  ftxui::Element render() override {
+  ftxui::Element OnRender() override {
     if (!model() || !itemDelegate()) {
       return ftxui::text(
           "Missing tree data model or layout delegate bindings.");
@@ -195,26 +228,27 @@ class TreeView : public AbstractGridLikeItemView {
       std::vector<ftxui::Element> uiRow;
 
       // Column 0 establishes structural alignment anchor
-      ModelIndex indexCol0 = flattened_indices_[(size_t)i];
-      int depth = calculateDepth(indexCol0);
-      bool hasChildren = model()->hasChildren(indexCol0);
-      bool isExpanded = expanded_nodes_.find(indexCol0.internalPointer()) !=
-                        expanded_nodes_.end();
+      const ModelIndex indexCol0 = flattened_indices_[(size_t)i];
+      const int depth = calculateDepth(indexCol0);
+      const bool hasChildren = model()->hasChildren(indexCol0);
+      const bool isExpanded =
+          expanded_nodes_.find(indexCol0.uniqueId()) != expanded_nodes_.end();
 
       // Construct Indentation Guides
       std::string indentStr = "";
       for (int d = 0; d < depth; ++d) {
-        indentStr += "    ";
+        indentStr += " ";
       }
 
       // Append Expansion Handle Indicator Icons ([+] / [-])
       std::string nodeHandle =
-          hasChildren ? (isExpanded ? "[-] " : "[+] ") : "  • ";
+          hasChildren ? (isExpanded ? "[-] " : "[+] ") : "• ";
 
       ftxui::Element structuralPrefix =
           ftxui::text(indentStr + nodeHandle) | ftxui::dim;
       ftxui::Element itemContent =
           itemDelegate()->createWidget(indexCol0, model());
+
       ftxui::Element anchorCell =
           ftxui::hbox({structuralPrefix, itemContent}) |
           ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN, colWidths[0] - 1);
@@ -228,7 +262,12 @@ class TreeView : public AbstractGridLikeItemView {
       if (isRowSelected) {
         anchorCell = anchorCell | ftxui::bgcolor(ftxui::Color::Blue) |
                      ftxui::color(ftxui::Color::White) | ftxui::bold;
+
+        if (Focused()) {
+          anchorCell = anchorCell | ftxui::focus;
+        }
       }
+
       uiRow.emplace_back(anchorCell);
 
       // INTERACTION: Insert column divider after column 0
@@ -278,7 +317,8 @@ class TreeView : public AbstractGridLikeItemView {
     }
 
     // Return safely bound inside an auto-aligning grid layout matrix
-    return ftxui::gridbox(std::move(gridMatrix)) | ftxui::border;
+    return ftxui::gridbox(std::move(gridMatrix)) | ftxui::vscroll_indicator |
+           ftxui::frame | ftxui::border;
   }
 
  protected:
@@ -297,7 +337,7 @@ class TreeView : public AbstractGridLikeItemView {
 
         // CRITICAL CRITERIA: Only traverse sub-branches if the current node is
         // explicitly open
-        bool isExpanded = expanded_nodes_.find(childIndex.internalPointer()) !=
+        bool isExpanded = expanded_nodes_.find(childIndex.uniqueId()) !=
                           expanded_nodes_.end();
         if (isExpanded && model()->hasChildren(childIndex)) {
           flattenBranch(childIndex);

@@ -151,7 +151,7 @@ int main() {
     return ftxui::vbox(
         {ftxui::text(" Decoupled Model-View-Delegate Table View ") |
              ftxui::bold | ftxui::center,
-         tableView.render()});
+         tableView.Render()});
   });
 
   screen.Loop(appLayout);

@@ -3,6 +3,7 @@
 #include "abstract_item_view.hpp"
 #include "abstract_list_model.hpp"
 #include "ftxui/component/component.hpp"
+#include "ftxui/component/event.hpp"
 #include "ftxui/dom/elements.hpp"
 
 namespace ftxmodel {
@@ -24,20 +25,40 @@ class ListView : public AbstractGridLikeItemView {
     }
   }
 
-  void moveUp() override {
+  bool OnEvent(ftxui::Event event) override {
+    if (event == ftxui::Event::ArrowUp) {
+      if (moveUp()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::ArrowDown) {
+      if (moveDown()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::Character(' ')) {
+      toggleCurrentItem();
+      return true;
+    }
+    return AbstractGridLikeItemView::OnEvent(event);
+  }
+
+  bool moveUp() {
     int currentRow = selectionModel()->currentIndex().row();
     if (currentRow > 0) {
       selectionModel()->setCurrentIndex(model()->index(currentRow - 1, 0));
       update();
+      return true;
     }
+    return false;
   }
 
-  void moveDown() override {
+  bool moveDown() {
     int currentRow = selectionModel()->currentIndex().row();
     if (currentRow < model()->rowCount() - 1) {
       selectionModel()->setCurrentIndex(model()->index(currentRow + 1, 0));
       update();
+      return true;
     }
+    return false;
   }
 
   void toggleCurrentItem() {
@@ -50,7 +71,7 @@ class ListView : public AbstractGridLikeItemView {
     model()->setData(idx, !currentStatus, ItemRole::CheckedRole);
   }
 
-  ftxui::Element render() override {
+  ftxui::Element OnRender() override {
     if (!model() || !itemDelegate()) {
       return ftxui::text("Missing model or delegate bindings.");
     }
@@ -89,9 +110,14 @@ class ListView : public AbstractGridLikeItemView {
         cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::Blue) |
                      ftxui::color(ftxui::Color::White) | ftxui::bold;
       }
-      renderedRows.push_back(cellWidget);
+      if (Focused()) {
+        renderedRows.push_back(cellWidget | ftxui::focus);
+      } else {
+        renderedRows.push_back(cellWidget);
+      }
     }
-    return ftxui::vbox(std::move(renderedRows)) | ftxui::border;
+    return ftxui::vbox(std::move(renderedRows)) | ftxui::vscroll_indicator |
+           ftxui::frame | ftxui::border;
   }
 
   void update() override { trigger_ftxui_refresh_(); }

@@ -8,22 +8,29 @@ class ItemSelectionModel {
   explicit ItemSelectionModel(AbstractItemModel* model) : model_(model) {}
 
   void setCurrentIndex(const ModelIndex& index) {
-    if (current_index_ == index) {
+    if (!model_ || !index.isValid()) {
       return;
     }
-    current_index_ = index;
-    currentIndexChanged(current_index_);
+    UniqueNodeId id = index.uniqueId();
+    if (current_id_ == id) {
+      return;
+    }
+    current_id_ = id;
+    currentIndexChanged(current_id_);
   }
 
-  ModelIndex currentIndex() const { return current_index_; }
+  UniqueNodeId currentId() const { return current_id_; }
+  ModelIndex currentIndex() const {
+    return model_ ? model_->findIndexById(currentId()) : ModelIndex();
+  }
   AbstractItemModel* model() const { return model_; }
 
   // SigSlot event to notify views when focus switches rows/columns
-  sigslot::signal_st<const ModelIndex&> currentIndexChanged;
+  sigslot::signal_st<const UniqueNodeId&> currentIndexChanged;
 
  private:
   AbstractItemModel* model_;
-  ModelIndex current_index_;
+  UniqueNodeId current_id_ = {nullptr};
 };
 
 }  // namespace ftxmodel

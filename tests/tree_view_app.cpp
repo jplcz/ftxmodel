@@ -138,7 +138,7 @@ int main() {
     return ftxui::vbox({ftxui::text(" Interactive Collapsible TreeView ") |
                             ftxui::bold | ftxui::center,
                         ftxui::separator(),
-                        treeView.render() | ftxui::xflex_grow,
+                        treeView.Render() | ftxui::xflex_grow,
                         ftxui::separator(),
                         ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump "
                                     "Parent | [↑/↓] Navigate") |

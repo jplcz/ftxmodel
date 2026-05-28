@@ -49,7 +49,7 @@ int main() {
     return ftxui::vbox({ftxui::text(" C++ OS FileSystem Tree Explorer Node ") |
                             ftxui::bold | ftxui::center |
                             ftxui::bgcolor(ftxui::Color::GrayDark),
-                        treeView.render()});
+                        treeView.Render()});
   });
 
   screen.Loop(appLayout);

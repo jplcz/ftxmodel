@@ -1,12 +1,13 @@
 #pragma once
 #include "abstract_item_model.hpp"
+#include "ftxui/component/component_base.hpp"
 #include "header_delegate.hpp"
 #include "item_delegate.hpp"
 #include "item_selection_model.hpp"
 
 namespace ftxmodel {
 
-class AbstractItemView : public sigslot::observer {
+class AbstractItemView : public ftxui::ComponentBase, public sigslot::observer {
  public:
   AbstractItemView() = default;
   virtual ~AbstractItemView() = default;
@@ -33,8 +34,7 @@ class AbstractItemView : public sigslot::observer {
   ItemSelectionModel* selectionModel() const { return selection_model_.get(); }
   ItemDelegate* itemDelegate() const { return delegate_.get(); }
 
-  // Pure virtual method to draw the entire structural frame container
-  virtual ftxui::Element render() = 0;
+  bool Focusable() const override { return true; }
 
  protected:
   // This acts as our slot callback
@@ -73,13 +73,6 @@ class AbstractGridLikeItemView : public AbstractItemView {
 
   void setShowHeaders(bool show) { show_headers_ = show; }
   bool showHeaders() const { return show_headers_; }
-
-  // --- Enforced Grid Navigation API ---
-  // Every grid-like layout must know how to respond to 4-way spatial navigation
-  virtual void moveUp() {}
-  virtual void moveDown() {}
-  virtual void moveLeft() {}
-  virtual void moveRight() {}
 };
 
 }  // namespace ftxmodel

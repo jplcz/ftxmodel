@@ -45,6 +45,10 @@ class StyledTextDelegate : public ItemDelegate {
   TextSizeConstraints& constraints() { return constraints_; }
   const TextSizeConstraints& constraints() const { return constraints_; }
 
+  void setConstraints(const TextSizeConstraints& constraints) {
+    constraints_ = constraints;
+  }
+
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
     // Convenience call to automatically apply truncation and padding bounds

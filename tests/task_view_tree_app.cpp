@@ -310,7 +310,7 @@ int main() {
     return ftxui::vbox(
         {ftxui::text(" Task and Thread Subsystem Dashboard ") | ftxui::bold |
              ftxui::center | ftxui::bgcolor(ftxui::Color::GrayDark),
-         ftxui::separator(), treeView.render(), ftxui::separator(),
+         ftxui::separator(), treeView.Render(), ftxui::separator(),
          ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump Parent | [↑/↓] "
                      "Navigate Rows") |
              ftxui::dim});
