@@ -12,3 +12,4 @@
 #include <ftxmodel/string_list_model.hpp>
 #include <ftxmodel/table_view.hpp>
 #include <ftxmodel/tree_view.hpp>
+#include "mock_item_model.hpp"

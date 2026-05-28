@@ -24,11 +24,11 @@ class AbstractProxyModel : public AbstractItemModel {
     }
   }
 
-  int rowCount(const ModelIndex& parent) const override {
+  int rowCount(const ModelIndex& parent = ModelIndex()) const override {
     return m_source ? m_source->rowCount(mapToSource(parent)) : 0;
   }
 
-  int columnCount(const ModelIndex& parent) const override {
+  int columnCount(const ModelIndex& parent = ModelIndex()) const override {
     return m_source ? m_source->columnCount(mapToSource(parent)) : 0;
   }
 
@@ -36,7 +36,8 @@ class AbstractProxyModel : public AbstractItemModel {
     return m_source ? m_source->hasChildren(mapToSource(parent)) : false;
   }
 
-  std::any data(const ModelIndex& index, ItemRole role) const override {
+  std::any data(const ModelIndex& index,
+                ItemRole role = ItemRole::DisplayRole) const override {
     return m_source ? m_source->data(mapToSource(index), role) : std::any();
   }
 
