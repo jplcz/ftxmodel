@@ -11,7 +11,7 @@ class IdentityProxyModel : public AbstractProxyModel {
     if (!sourceModel()) {
       return {};
     }
-    const auto sourceParent = mapFromSource(parent);
+    const auto sourceParent = mapToSource(parent);
     const auto sourceIndex = sourceModel()->index(row, column, sourceParent);
     return mapFromSource(sourceIndex);
   }

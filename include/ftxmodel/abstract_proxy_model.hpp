@@ -63,11 +63,11 @@ class AbstractProxyModel : public AbstractItemModel {
   }
 
   ItemFlags flags(const ModelIndex& index) const override {
-    return m_source ? m_source->flags(index) : NoItemFlags;
+    return m_source ? m_source->flags(mapToSource(index)) : NoItemFlags;
   }
 
   UniqueNodeId uniqueId(const ModelIndex& index) const override {
-    return m_source ? m_source->uniqueId(mapFromSource(index)) : UniqueNodeId();
+    return m_source ? m_source->uniqueId(mapToSource(index)) : UniqueNodeId();
   }
 
   ModelIndex findIndexById(
@@ -87,6 +87,11 @@ class AbstractProxyModel : public AbstractItemModel {
   virtual void invalidate() = 0;
 
   ModelIndex createSourceIndex(int row, int col, void* internalPtr) const {
+    assert(m_source != nullptr &&
+           "Cannot create source index when source model is null!");
+    if (!m_source) {
+      return ModelIndex();  // Safe production fallback boundary
+    }
     return ModelIndex(row, col, internalPtr, m_source.get());
   }
 
@@ -94,7 +99,11 @@ class AbstractProxyModel : public AbstractItemModel {
     headerDataChanged(section, role);
   }
 
-  void sourceDataChanged(const ModelIndex&, const ModelIndex&) { invalidate(); }
+  void sourceDataChanged(const ModelIndex& topLeft,
+                         const ModelIndex& bottomRight) {
+    invalidate();
+    dataChanged(mapFromSource(topLeft), mapFromSource(bottomRight));
+  }
 };
 
 }  // namespace ftxmodel
