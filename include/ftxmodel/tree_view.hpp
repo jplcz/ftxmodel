@@ -2,6 +2,7 @@
 #include <functional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 #include "abstract_item_view.hpp"
 #include "ftxui/component/event.hpp"
@@ -67,7 +68,7 @@ class TreeView : public AbstractGridLikeItemView {
 
  public:
   explicit TreeView(std::function<void()> refreshCb)
-      : trigger_ftxui_refresh_(refreshCb) {}
+      : trigger_ftxui_refresh_(std::move(std::move(refreshCb))) {}
 
   void setModel(AbstractItemModel* model) override {
     AbstractItemView::setModel(model);
