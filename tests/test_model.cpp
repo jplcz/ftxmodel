@@ -9,6 +9,7 @@
 #include <ftxmodel/item_delegate.hpp>
 #include <ftxmodel/item_selection_model.hpp>
 #include <ftxmodel/list_view.hpp>
+#include <ftxmodel/sort_filter_proxy_model.hpp>
 #include <ftxmodel/string_list_model.hpp>
 #include <ftxmodel/table_view.hpp>
 #include <ftxmodel/tree_view.hpp>
