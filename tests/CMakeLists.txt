@@ -2,19 +2,19 @@ enable_testing()
 
 include(FetchContent)
 FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+        googletest
+        URL https://github.com/google/googletest/archive/refs/heads/main.zip
 )
 # For Windows environments: prevent overriding the parent compiler's MT/MD settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(unit_tests test_model.cpp identity_proxy_model_test.cpp)
+add_executable(unit_tests test_model.cpp identity_proxy_model_test.cpp string_list_model_test.cpp)
 
-target_link_libraries(unit_tests PRIVATE 
-    ftxmodel
-    gtest_main
-    gmock
+target_link_libraries(unit_tests PRIVATE
+        ftxmodel
+        gtest_main
+        gmock
 )
 
 include(GoogleTest)

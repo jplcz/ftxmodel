@@ -8,7 +8,14 @@ namespace ftxmodel {
 
 class StringListModel : public AbstractListModel {
  public:
-  explicit StringListModel(std::vector<std::string> items)
+  explicit StringListModel(std::vector<std::string> items) {
+    items_.reserve(items.size());
+    for (auto&& item : items) {
+      items_.emplace_back(std::make_shared<std::string>(std::move(item)));
+    }
+  }
+
+  explicit StringListModel(std::vector<std::shared_ptr<std::string>> items)
       : items_(std::move(items)) {}
 
   // Only mandatory structural override left
@@ -26,8 +33,14 @@ class StringListModel : public AbstractListModel {
     }
 
     if (role == ItemRole::DisplayRole || role == ItemRole::EditRole) {
-      return items_[(size_t)index.row()];
+      return *items_[(size_t)index.row()];
     }
+
+    // Explicit role lookup fallback matching our base architecture
+    if (role == ItemRole::UniqueIdentifierRole) {
+      return uniqueId(index);
+    }
+
     return {};
   }
 
@@ -41,7 +54,7 @@ class StringListModel : public AbstractListModel {
     }
 
     if (value.type() == typeid(std::string)) {
-      items_[index.row()] = std::any_cast<std::string>(value);
+      *items_[index.row()] = std::any_cast<std::string>(value);
 
       // Notify views to repaint this specific index slot
       dataChanged(index, index);
@@ -59,7 +72,7 @@ class StringListModel : public AbstractListModel {
 
     // Notify observers to prepare layout adjustments
     beginInsertRows(ModelIndex(), nextRow, nextRow);
-    items_.emplace_back(std::move(item));
+    items_.emplace_back(std::make_shared<std::string>(std::move(item)));
     endInsertRows();
   }
 
@@ -73,13 +86,25 @@ class StringListModel : public AbstractListModel {
     endRemoveRows();
   }
 
+  UniqueNodeId uniqueId(const ModelIndex& index) const override {
+    if (!index.isValid() || index.row() >= rowCount()) {
+      return UniqueNodeId{nullptr};
+    }
+
+    // Because the shared_ptr's heap address is perfectly stable,
+    // the raw pointer is now a 100% reliable Unique ID!
+    return UniqueNodeId{static_cast<const void*>(
+        items_[static_cast<size_t>(index.row())].get())};
+  }
+
  protected:
   void* internalPointerAt(int row) const override {
-    return (void*)&items_[row];  // Pass internal memory location safely
+    // Return the stable address of the actual string payload
+    return static_cast<void*>(items_[static_cast<size_t>(row)].get());
   }
 
  private:
-  std::vector<std::string> items_;
+  std::vector<std::shared_ptr<std::string>> items_;
 };
 
 }  // namespace ftxmodel
