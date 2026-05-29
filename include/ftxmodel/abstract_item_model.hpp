@@ -390,6 +390,9 @@ class AbstractItemModel {
    * removed, forcing cell widths to re-align.
    */
   sigslot::signal_st<> endRemoveColumns;
+
+  sigslot::signal_st<> beginResetModel;
+  sigslot::signal_st<> endResetModel;
 };
 
 // ========================================================================
