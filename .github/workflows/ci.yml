@@ -11,6 +11,8 @@ jobs:
   build-and-test:
     name: GCC/Clang Matrix Testing (${{ matrix.os }} - ${{ matrix.compiler }})
     runs-on: ${{ matrix.os }}
+    container:
+      image: gitea.kimbap.pl/docker-images/ftxmodel-ci:latest
 
     strategy:
       fail-fast: false # Don't cancel other matrix jobs if one compiler fails
