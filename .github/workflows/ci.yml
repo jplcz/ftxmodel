@@ -28,11 +28,6 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Install Platform Build Tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build clang
-
       - name: Configure CMake Build Target Tree
         env:
           CXX: ${{ matrix.compiler }}
