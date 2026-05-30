@@ -5,34 +5,33 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch: # Allows manual pipeline triggering from the UI
 
 jobs:
   build-and-test:
-    name: DevContainer Matrix Testing (${{ matrix.compiler }})
-    runs-on: ubuntu-latest
-
-    container:
-      image: mcr.microsoft.com/devcontainers/base:resolute
+    name: GCC/Clang Matrix Testing (${{ matrix.os }} - ${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: false
+      fail-fast: false # Don't cancel other matrix jobs if one compiler fails
       matrix:
         include:
-          - compiler: g++
+          - os: ubuntu-latest
+            compiler: g++
             cc: gcc
-          - compiler: clang++
+          - os: ubuntu-latest
+            compiler: clang++
             cc: clang
 
     steps:
+      # Pull down repository source code layer
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      # We must quickly ensure cmake and ninja are available in the base image
-      # if they aren't pre-baked into the baseline Microsoft image layer
-      # (This executes in less than 2 seconds when packages are minor)
-      - name: Ensure Build Tooling is Present
+      - name: Install Platform Build Tooling
         run: |
-          sudo apt-get update && sudo apt-get install -y cmake ninja-build build-essential clang
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build clang
 
       - name: Configure CMake Build Target Tree
         env:
@@ -41,11 +40,18 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DFTXMODEL_ENABLE_INSTALL=ON
+            -DFTXMODEL_ENABLE_INSTALL=ON \
+            -DFTXMODEL_ENABLE_TESTING=ON \
+            -DFTXMODEL_ENABLE_APPS=ON
 
+      # Compile the source library tree and test harness executable
       - name: Compile Target Artifacts
         run: cmake --build build --parallel $(nproc)
 
+      # Execute the GoogleTest suite via CTest test framework runner
       - name: Execute Framework Test Suite
         working-directory: build/tests
-        run: ctest --output-on-failure --parallel $(nproc)
+        run: |
+          ctest --output-on-failure \
+                --schedule-random \
+                --parallel $(nproc)
