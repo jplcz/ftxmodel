@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include "abstract_item_model.hpp"
 
 namespace ftxmodel {
