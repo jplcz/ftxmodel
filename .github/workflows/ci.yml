@@ -1,0 +1,52 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # Allows manual pipeline triggering from the UI
+
+jobs:
+  build-and-test:
+    name: GCC/Clang Matrix Testing (${{ matrix.os }} - ${{ matrix.compiler }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false # Don't cancel other matrix jobs if one compiler fails
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: g++
+            cc: gcc
+          - os: ubuntu-latest
+            compiler: clang++
+            cc: clang
+
+    steps:
+      # Pull down repository source code layer
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Configure CMake Build Target Tree
+        env:
+          CXX: ${{ matrix.compiler }}
+          CC: ${{ matrix.cc }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFTXMODEL_ENABLE_INSTALL=ON \
+            -DFTXMODEL_ENABLE_TESTING=ON \
+            -DFTXMODEL_ENABLE_APPS=ON
+
+      # Compile the source library tree and test harness executable
+      - name: Compile Target Artifacts
+        run: cmake --build build --parallel $(nproc)
+
+      # Execute the GoogleTest suite via CTest test framework runner
+      - name: Execute Framework Test Suite
+        working-directory: build/tests
+        run: |
+          ctest --output-on-failure \
+                --schedule-random \
+                --parallel $(nproc)
