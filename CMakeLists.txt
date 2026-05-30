@@ -11,51 +11,28 @@ option(FTXMODEL_ENABLE_APPS "Enable example apps" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(FetchContent)
 include(CMakeFindDependencyMacro)
+include(cmake/CPM.cmake)
 
 find_package(PalSigslot CONFIG QUIET)
-
-if(NOT PalSigslot_FOUND AND NOT TARGET Pal::Sigslot)
-    message(STATUS "sigslot not found in package registry. Fetching from GitHub...")
-
-    set(SIGSLOT_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(
-            sigslot
-            GIT_REPOSITORY https://github.com/palacaze/sigslot
-            GIT_TAG v1.2.3)
-    FetchContent_MakeAvailable(sigslot)
-
-    # Map alias if the downloaded target name doesn't match the standard package namespace
-    if(TARGET sigslot AND NOT TARGET Pal::Sigslot)
-        add_library(Pal::Sigslot ALIAS sigslot)
-    endif()
-
-    set(FTXMODEL_USING_INTERNAL_SIGSLOT ON)
-else()
-    message(STATUS "Found sigslot in package registry: ${PalSigslot_DIR}")
-endif()
-
-find_package(ftxui CONFIG QUIET)
-
-if(NOT ftxui_FOUND AND NOT TARGET ftxui::screen)
-    message(STATUS "ftxui not found in package registry. Fetching from GitHub...")
-
-    set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-
-    FetchContent_Declare(
-            ftxui
-            GIT_REPOSITORY https://github.com/ArthurSonzogni/FTXUI.git
-            GIT_TAG main)
-    FetchContent_MakeAvailable(ftxui)
-else()
-    message(STATUS "Found ftxui in package registry: ${ftxui_DIR}")
-endif()
+set(SIGSLOT_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+CPMAddPackage(
+        NAME PalSigslot
+        GITHUB_REPOSITORY palacaze/sigslot
+        VERSION 1.2.3
+        OPTIONS "SIGSLOT_ENABLE_INSTALL OFF"
+)
 
 set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(ftxui)
+CPMAddPackage(
+        NAME ftxui
+        GITHUB_REPOSITORY ArthurSonzogni/FTXUI
+        GIT_TAG main
+        OPTIONS
+        "FTXUI_BUILD_EXAMPLES OFF"
+        "FTXUI_BUILD_TESTS OFF"
+)
 
 add_library(ftxmodel INTERFACE)
 add_library(ftxmodel::ftxmodel ALIAS ftxmodel)
@@ -63,15 +40,14 @@ target_compile_features(ftxmodel INTERFACE cxx_std_20)
 
 target_include_directories(ftxmodel INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${sigslot_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(ftxmodel INTERFACE
         $<BUILD_INTERFACE:Pal::Sigslot>
-        $<BUILD_INTERFACE:ftxui::screen>
-        $<BUILD_INTERFACE:ftxui::dom>
-        $<BUILD_INTERFACE:ftxui::component>
+        ftxui::screen
+        ftxui::dom
+        ftxui::component
 )
 
 # -----------------------------------------------------------------------------

@@ -1,27 +1,12 @@
 enable_testing()
 
-find_package(GTest CONFIG QUIET)
-
-if(NOT GTest_FOUND AND NOT TARGET GTest::gtest_main)
-    message(STATUS "GoogleTest not found in package registry. Fetching from GitHub...")
-
-    include(FetchContent)
-    FetchContent_Declare(
-            googletest
-            URL https://github.com/google/googletest/archive/refs/heads/main.zip
-    )
-
-    # For Windows environments: prevent overriding the parent compiler's MT/MD settings
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
-
-    # Create matching namespaced aliases so your link logic remains unified
-    if(TARGET gtest_main AND NOT TARGET GTest::gtest_main)
-        add_library(GTest::gtest_main ALIAS gtest_main)
-    endif()
-else()
-    message(STATUS "Found GoogleTest in package registry: ${GTest_DIR}")
-endif()
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+CPMAddPackage(
+        NAME googletest
+        GITHUB_REPOSITORY google/googletest
+        GIT_TAG main
+        OPTIONS "gtest_force_shared_crt ON"
+)
 
 # =============================================================================
 # Test Executable Target Definition
