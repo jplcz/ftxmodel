@@ -3,6 +3,7 @@
 #include <ftxmodel/abstract_item_view.hpp>
 #include <ftxmodel/abstract_list_model.hpp>
 #include <ftxmodel/abstract_proxy_model.hpp>
+#include <ftxmodel/concat_proxy_model.hpp>
 #include <ftxmodel/file_system_model.hpp>
 #include <ftxmodel/flatten_tree_proxy_model.hpp>
 #include <ftxmodel/identity_proxy_model.hpp>

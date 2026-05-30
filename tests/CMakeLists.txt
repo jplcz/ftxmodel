@@ -20,6 +20,7 @@ add_executable(unit_tests
         standard_item_model_test.cpp
         unicode_scaler_test.cpp
         test_any_to_string.cpp
+        concat_proxy_model_test.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE

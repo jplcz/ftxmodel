@@ -53,7 +53,7 @@ class TableView : public AbstractGridLikeItemView {
   explicit TableView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(std::move(refreshCb)) {}
 
-  void setModel(const std::shared_ptr<AbstractItemModel>&  model) override {
+  void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
     // Essential: Invoke base class to hook up signals and instantiate
     // SelectionModel
     AbstractItemView::setModel(model);
