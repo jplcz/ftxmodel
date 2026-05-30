@@ -2,6 +2,7 @@
 #include <any>
 #include <string>
 #include "abstract_item_model.hpp"
+#include "any_to_string.hpp"
 #include "ftxui/dom/elements.hpp"
 #include "unicode_text_scaler.hpp"
 
@@ -65,18 +66,13 @@ class AdvancedHeaderDelegate : public HeaderDelegate {
       const Orientation orientation,
       const AbstractItemModel* model) const override {
     // Query the model's standard headerData implementation
-    std::any rawHeader =
+    const std::any rawHeader =
         model->headerData(section, orientation, ItemRole::DisplayRole);
 
-    std::string headerText;
-    if (rawHeader.type() == typeid(std::string)) {
-      headerText = std::any_cast<std::string>(rawHeader);
-    } else {
-      headerText =
-          std::to_string(section);  // Fallback to raw numeric index string
-    }
+    const std::string headerText =
+        AnyToStringTranslator::Translate(rawHeader, std::to_string(section));
 
-    // 2. Process and Render Based on Layout Orientation
+    // Process and Render Based on Layout Orientation
     if (orientation == Orientation::Horizontal) {
       // Pass text through your layout engine using column constraints
       std::string formatted_header =

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <functional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "abstract_item_view.hpp"
 #include "ftxui/component/event.hpp"
@@ -16,20 +17,20 @@ class TableView : public AbstractGridLikeItemView {
 
   // Helper calculation loop to find the widest cell footprint constraint in a
   // specific column track
-  int calculateOptimalColumnWidth(int colIndex) const {
+  [[nodiscard]] int calculateOptimalColumnWidth(int colIndex) const {
     int maxColumnWidth = 0;
     int totalRows = model()->rowCount();
 
     // Check the header's size requirements first if headers are turned on
     if (showHeaders()) {
-      // HeaderDelegate doesn't have a formal sizeHint API, but we can safely
-      // estimate its demand using its string data length
-      std::any hData = model()->headerData(colIndex, Orientation::Horizontal,
-                                           ItemRole::DisplayRole);
-      if (hData.type() == typeid(std::string)) {
-        maxColumnWidth = std::max(
-            maxColumnWidth,
-            static_cast<int>(std::any_cast<std::string>(hData).length()) + 2);
+      const std::any hData = model()->headerData(
+          colIndex, Orientation::Horizontal, ItemRole::DisplayRole);
+      std::string header_text = AnyToStringTranslator::Translate(hData);
+
+      if (!header_text.empty()) {
+        const ftxui::Dimensions header_bounds =
+            UnicodeTextScaler::GetTextBounds(header_text);
+        maxColumnWidth = std::max(maxColumnWidth, header_bounds.dimx + 2);
       }
     }
 
@@ -50,7 +51,7 @@ class TableView : public AbstractGridLikeItemView {
 
  public:
   explicit TableView(std::function<void()> refreshCb)
-      : trigger_ftxui_refresh_(refreshCb) {}
+      : trigger_ftxui_refresh_(std::move(refreshCb)) {}
 
   void setModel(AbstractItemModel* model) override {
     // Essential: Invoke base class to hook up signals and instantiate

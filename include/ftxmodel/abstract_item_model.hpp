@@ -4,6 +4,8 @@
 #include <sigslot/signal.hpp>
 #include <string>
 #include <string_view>
+
+#include "any_to_string.hpp"
 #include "model_index.hpp"
 
 namespace ftxmodel {
@@ -210,6 +212,9 @@ class AbstractItemModel {
     if (roleIdData.type() == typeid(int)) {
       return {std::any_cast<int>(roleIdData)};
     }
+    if (roleIdData.type() == typeid(int64_t)) {
+      return {std::any_cast<int64_t>(roleIdData)};
+    }
     // Fall back to internal pointer address first
     if (index.internalPointer()) {
       return {index.internalPointer()};
@@ -274,18 +279,8 @@ class AbstractItemModel {
    * conversion types fail.
    */
   std::string textData(const ModelIndex& index,
-                       ItemRole role = ItemRole::DisplayRole) const {
-    auto val = data(index, role);
-    if (val.type() == typeid(std::string)) {
-      return std::any_cast<std::string>(val);
-    }
-    if (val.type() == typeid(std::string_view)) {
-      return std::string(std::any_cast<std::string_view>(val));
-    }
-    if (val.type() == typeid(const char*)) {
-      return std::any_cast<const char*>(val);
-    }
-    return "";
+                       const ItemRole role = ItemRole::DisplayRole) const {
+    return AnyToStringTranslator::Translate(data(index, role));
   }
 
  protected:
@@ -301,8 +296,10 @@ class AbstractItemModel {
    * directly to a backend data block node.
    * @return ModelIndex The initialized workspace layout handle.
    */
-  ModelIndex createIndex(int row, int column, void* ptr = nullptr) const {
-    return ModelIndex(row, column, ptr, this);
+  ModelIndex createIndex(const int row,
+                         const int column,
+                         void* ptr = nullptr) const {
+    return {row, column, ptr, this};
   }
 
  public:

@@ -24,17 +24,22 @@ class TreeView : public AbstractGridLikeItemView {
   // ========================================================================
   // Dynamic Column Width Processing Pass
   // ========================================================================
-  int calculateOptimalColumnWidth(int colIndex) const {
+  [[nodiscard]] int calculateOptimalColumnWidth(const int colIndex) const {
     int maxColumnWidth = 0;
 
     // Account for Header text constraints if enabled
     if (showHeaders()) {
-      std::any hData = model()->headerData(colIndex, Orientation::Horizontal,
-                                           ItemRole::DisplayRole);
-      if (hData.type() == typeid(std::string)) {
-        maxColumnWidth = std::max(
-            maxColumnWidth,
-            static_cast<int>(std::any_cast<std::string>(hData).length()));
+      const std::any hData = model()->headerData(
+          colIndex, Orientation::Horizontal, ItemRole::DisplayRole);
+
+      const std::string header_text = AnyToStringTranslator::Translate(hData);
+
+      if (!header_text.empty()) {
+        // Correctly track visual wide-character layouts instead of processing
+        // raw bytes
+        ftxui::Dimensions header_bounds =
+            UnicodeTextScaler::GetTextBounds(header_text);
+        maxColumnWidth = std::max(maxColumnWidth, header_bounds.dimx);
       }
     }
 
@@ -43,11 +48,10 @@ class TreeView : public AbstractGridLikeItemView {
       if (colIndex == 0) {
         // Column 0 is a special composite: Indentation + Handle Prefix +
         // Delegate Data
-        int depth = calculateDepth(indexCol0);
-        int prefixWidth =
-            (depth * 4) + 4;  // 4 spaces per depth level + 4 chars for "[+] "
+        const int depth = calculateDepth(indexCol0);
+        const int prefixWidth = (depth * 4) + 4;
 
-        ftxui::Dimensions cellHint =
+        const ftxui::Dimensions cellHint =
             itemDelegate()->sizeHint(indexCol0, model());
         maxColumnWidth = std::max(maxColumnWidth, prefixWidth + cellHint.dimx);
       } else {
@@ -56,7 +60,7 @@ class TreeView : public AbstractGridLikeItemView {
         ModelIndex targetColIdx = model()->index(indexCol0.row(), colIndex,
                                                  model()->parent(indexCol0));
         if (targetColIdx.isValid()) {
-          ftxui::Dimensions cellHint =
+          const ftxui::Dimensions cellHint =
               itemDelegate()->sizeHint(targetColIdx, model());
           maxColumnWidth = std::max(maxColumnWidth, cellHint.dimx);
         }
@@ -186,7 +190,7 @@ class TreeView : public AbstractGridLikeItemView {
           std::clamp(selected_linear_row_, 0,
                      static_cast<int>(flattened_indices_.size()) - 1);
       selectionModel()->setCurrentIndex(
-          flattened_indices_[(size_t)selected_linear_row_]);
+          flattened_indices_[static_cast<size_t>(selected_linear_row_)]);
     }
   }
 

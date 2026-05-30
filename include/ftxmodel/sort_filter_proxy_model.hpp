@@ -167,39 +167,55 @@ struct SortFilterProxyModel::Impl {
 
     // Phase 2: Sort
     if (sort_column >= 0 && !allowedNodes.empty()) {
-      std::ranges::stable_sort(allowedNodes, [this, src](
-                                                 const StableNodeMapping& a,
-                                                 const StableNodeMapping& b) {
-        const ModelIndex srcParentA =
-            src->findIndexById(UniqueNodeId{a.source_parent_ptr});
-        ModelIndex idxA =
-            src->findIndexById(UniqueNodeId{a.source_node_ptr}, srcParentA);
-        idxA = src->index(idxA.row(), sort_column, srcParentA);
+      std::ranges::stable_sort(
+          allowedNodes,
+          [this, src](const StableNodeMapping& a, const StableNodeMapping& b) {
+            const ModelIndex srcParentA =
+                src->findIndexById(UniqueNodeId{a.source_parent_ptr});
+            ModelIndex idxA =
+                src->findIndexById(UniqueNodeId{a.source_node_ptr}, srcParentA);
+            idxA = src->index(idxA.row(), sort_column, srcParentA);
 
-        const ModelIndex srcParentB =
-            src->findIndexById(UniqueNodeId{b.source_parent_ptr});
-        ModelIndex idxB =
-            src->findIndexById(UniqueNodeId{b.source_node_ptr}, srcParentB);
-        idxB = src->index(idxB.row(), sort_column, srcParentB);
+            const ModelIndex srcParentB =
+                src->findIndexById(UniqueNodeId{b.source_parent_ptr});
+            ModelIndex idxB =
+                src->findIndexById(UniqueNodeId{b.source_node_ptr}, srcParentB);
+            idxB = src->index(idxB.row(), sort_column, srcParentB);
 
-        std::any valA = src->data(idxA, ItemRole::DisplayRole);
-        std::any valB = src->data(idxB, ItemRole::DisplayRole);
+            const std::any valA = src->data(idxA, ItemRole::DisplayRole);
+            const std::any valB = src->data(idxB, ItemRole::DisplayRole);
 
-        bool isLessThan = false;
-        if (valA.type() == typeid(std::string) &&
-            valB.type() == typeid(std::string)) {
-          isLessThan = std::any_cast<std::string>(valA) <
-                       std::any_cast<std::string>(valB);
-        } else if (valA.type() == typeid(int) && valB.type() == typeid(int)) {
-          isLessThan = std::any_cast<int>(valA) < std::any_cast<int>(valB);
-        } else if (valA.type() == typeid(std::int64_t) &&
-                   valB.type() == typeid(std::int64_t)) {
-          isLessThan = std::any_cast<std::int64_t>(valA) <
-                       std::any_cast<std::int64_t>(valB);
-        }
+            // Fast-path checking optimization: if both items share the exact
+            // same type, extract and evaluate them natively to avoid string
+            // conversion overhead.
+            if (valA.type() == valB.type()) {
+              if (valA.type() == typeid(int)) {
+                const bool isLessThan =
+                    std::any_cast<int>(valA) < std::any_cast<int>(valB);
+                return sort_ascending ? isLessThan : !isLessThan;
+              }
+              if (valA.type() == typeid(std::int64_t)) {
+                const bool isLessThan = std::any_cast<std::int64_t>(valA) <
+                                        std::any_cast<std::int64_t>(valB);
+                return sort_ascending ? isLessThan : !isLessThan;
+              }
+              if (valA.type() == typeid(std::string)) {
+                const bool isLessThan =
+                    std::any_cast<const std::string&>(valA) <
+                    std::any_cast<const std::string&>(valB);
+                return sort_ascending ? isLessThan : !isLessThan;
+              }
+            }
 
-        return sort_ascending ? isLessThan : !isLessThan;
-      });
+            // Unified Fallback Path: If types are mismatched (e.g., int vs
+            // int64) or represent unknown/registered structures, seamlessly
+            // flatten them via our translation engine.
+            const std::string strA = AnyToStringTranslator::Translate(valA);
+            const std::string strB = AnyToStringTranslator::Translate(valB);
+
+            const bool isLessThan = strA < strB;
+            return sort_ascending ? isLessThan : !isLessThan;
+          });
     }
 
     if (!allowedNodes.empty() || parentKey == nullptr) {

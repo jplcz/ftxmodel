@@ -57,10 +57,12 @@ class StyledTextDelegate : public ItemDelegate {
     std::string processed_text =
         UnicodeTextScaler::FormatText(model->textData(index), options_);
 
-    auto element =
-        ftxui::paragraph(std::move(processed_text)) | ftxui::color(text_color_);
+    if (processed_text.find('\n') == std::string::npos) {
+      return ftxui::text(std::move(processed_text)) | ftxui::color(text_color_);
+    }
 
-    return element;
+    return ftxui::paragraph(std::move(processed_text)) |
+           ftxui::color(text_color_);
   }
 
   // Returns the width matching the string length, defaulting to 1 height block
@@ -110,7 +112,7 @@ class CheckBoxDelegate : public ItemDelegate {
  public:
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
-    auto rawData = model->data(index, ItemRole::DisplayRole);
+    const auto rawData = model->data(index, ItemRole::DisplayRole);
 
     bool checked = false;
     if (rawData.type() == typeid(bool)) {

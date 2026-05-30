@@ -77,7 +77,7 @@ class AbstractGridLikeItemView : public AbstractItemView {
     return header_delegate_.get();
   }
 
-  void setShowHeaders(bool show) { show_headers_ = show; }
+  void setShowHeaders(const bool show) { show_headers_ = show; }
   [[nodiscard]] bool showHeaders() const { return show_headers_; }
 };
 

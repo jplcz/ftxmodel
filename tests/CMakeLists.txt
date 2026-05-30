@@ -13,7 +13,7 @@ add_executable(unit_tests test_model.cpp identity_proxy_model_test.cpp string_li
         sort_filter_proxy_model_test.cpp test_flatten_tree_proxy_model.cpp
         standard_item_model_test.cpp
         unicode_scaler_test.cpp
-        format_text_app.cpp)
+        test_any_to_string.cpp)
 
 target_link_libraries(unit_tests PRIVATE
         ftxmodel
