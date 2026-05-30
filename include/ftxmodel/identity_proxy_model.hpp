@@ -5,8 +5,8 @@ namespace ftxmodel {
 
 class IdentityProxyModel : public AbstractProxyModel {
  public:
-  ModelIndex index(int row,
-                   int column,
+  ModelIndex index(const int row,
+                   const int column,
                    const ModelIndex& parent) const override {
     if (!sourceModel()) {
       return {};

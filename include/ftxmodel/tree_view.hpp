@@ -96,7 +96,7 @@ class TreeView : public AbstractGridLikeItemView {
         static_cast<int>(flattened_indices_.size()) - 1) {
       selected_linear_row_++;
       selectionModel()->setCurrentIndex(
-          flattened_indices_[(size_t)selected_linear_row_]);
+          flattened_indices_[static_cast<size_t>(selected_linear_row_)]);
       update();
       return true;
     }

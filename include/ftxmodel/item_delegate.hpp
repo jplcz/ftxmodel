@@ -6,7 +6,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "text_size_constraints.hpp"
 #include "unicode_text_scaler.hpp"
 
 namespace ftxmodel {
@@ -36,51 +35,75 @@ class StyledTextDelegate : public ItemDelegate {
  public:
   StyledTextDelegate(Alignment align = Alignment::Left,
                      ftxui::Color color = ftxui::Color::White,
-                     TextSizeConstraints constraints = {})
-      : alignment_(align), text_color_(color), constraints_(constraints) {}
+                     FormattingOptions options = {})
+      : alignment_(align), text_color_(color), options_(options) {
+    // Explicitly synchronize the master horizontal alignment flags
+    options_.alignment = alignment_;
+  }
 
-  // Expose the helper profile directly to let developers modify bounds on the
-  // fly
-  TextSizeConstraints& constraints() { return constraints_; }
-  const TextSizeConstraints& constraints() const { return constraints_; }
+  // Expose the formatting configuration block for on-the-fly layout adjustments
+  [[nodiscard]] FormattingOptions& options() noexcept { return options_; }
+  [[nodiscard]] const FormattingOptions& options() const noexcept {
+    return options_;
+  }
 
-  void setConstraints(const TextSizeConstraints& constraints) {
-    constraints_ = constraints;
+  void setOptions(const FormattingOptions& options) {
+    options_ = options;
+    options_.alignment = alignment_;  // Maintain flag synchronization
   }
 
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
-    // Convenience call to automatically apply truncation and padding bounds
-    std::string processedText =
-        constraints_.applyBounds(model->textData(index));
+    std::string processed_text =
+        UnicodeTextScaler::FormatText(model->textData(index), options_);
 
     auto element =
-        ftxui::text(std::move(processedText)) | ftxui::color(text_color_);
+        ftxui::paragraph(std::move(processed_text)) | ftxui::color(text_color_);
 
-    // Apply visual alignment properties
-    switch (alignment_) {
-      case Alignment::Center:
-        return element | ftxui::center;
-      case Alignment::Right:
-        return element | ftxui::align_right;
-      case Alignment::Left:
-      default:
-        return element;
-    }
+    return element;
   }
 
   // Returns the width matching the string length, defaulting to 1 height block
   ftxui::Dimensions sizeHint(const ModelIndex& index,
                              const AbstractItemModel* model) const override {
-    // Convenience call to resolve aggregate cell spatial demands
-    int finalWidth = constraints_.calculateWidthHint(model->textData(index));
-    return ftxui::Dimensions{std::max(1, finalWidth), 1};
+    const auto raw_text = model->textData(index);
+
+    // Fast-path evaluation query shortcut
+    if (raw_text.empty()) {
+      return ftxui::Dimensions{std::max(1, options_.min_width),
+                               std::max(1, options_.min_height)};
+    }
+
+    // Measure the raw text footprint shapes
+    const auto text_bounds = UnicodeTextScaler::GetTextBounds(raw_text);
+
+    // Run geometry boundary clipping calculations identical to your pipeline
+    // math
+    int target_width = (options_.preferred_width > 0) ? options_.preferred_width
+                                                      : text_bounds.dimx;
+    if (options_.max_width > 0 && target_width > options_.max_width) {
+      target_width = options_.max_width;
+    }
+    if (options_.min_width > 0 && target_width < options_.min_width) {
+      target_width = options_.min_width;
+    }
+
+    int target_height = text_bounds.dimy;
+    if (options_.max_height > 0 && target_height > options_.max_height) {
+      target_height = options_.max_height;
+    }
+    if (options_.min_height > 0 && target_height < options_.min_height) {
+      target_height = options_.min_height;
+    }
+
+    return ftxui::Dimensions{std::max(1, target_width),
+                             std::max(1, target_height)};
   }
 
  private:
   Alignment alignment_;
   ftxui::Color text_color_;
-  TextSizeConstraints constraints_;  // Dedicated layout configuration profile
+  FormattingOptions options_;
 };
 
 class CheckBoxDelegate : public ItemDelegate {
