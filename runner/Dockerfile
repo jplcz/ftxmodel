@@ -10,6 +10,10 @@ RUN apt-get update && apt-get install -y \
     cmake \
     ninja-build \
     git \
+    nodejs \
+    clang-format \
+    clang-tidy \
+    valgrind \
     && rm -rf /var/lib/apt/lists/*
 
 # Set default working directory path inside container filesystem
