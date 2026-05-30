@@ -12,7 +12,8 @@ FetchContent_MakeAvailable(googletest)
 add_executable(unit_tests test_model.cpp identity_proxy_model_test.cpp string_list_model_test.cpp
         sort_filter_proxy_model_test.cpp test_flatten_tree_proxy_model.cpp
         standard_item_model_test.cpp
-        unicode_scaler_test.cpp)
+        unicode_scaler_test.cpp
+        format_text_app.cpp)
 
 target_link_libraries(unit_tests PRIVATE
         ftxmodel
@@ -37,3 +38,4 @@ AddExample(tree_view_app.cpp)
 AddExample(task_view_tree_app.cpp)
 AddExample(fs_model_app.cpp)
 AddExample(multi_router_delegate_app.cpp)
+AddExample(format_text_app.cpp)

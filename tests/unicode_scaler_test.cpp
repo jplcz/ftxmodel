@@ -353,3 +353,105 @@ TEST(VerticalLayoutPipelineTest,
 
   EXPECT_TRUE(output_vec[2].is_pure_padding);  // Bottom Buffer Row
 }
+
+// ============================================================================
+// UNIT TESTS FOR ApplyHorizontalPadding
+// ============================================================================
+
+TEST(UnicodeTextScalerTest, ApplyHorizontalPadding_ZeroAllocationFastPath) {
+  // Arrange: Setup strings that already perfectly meet or exceed the target
+  // width
+  std::array<std::string_view, 2> lines = {"ExactWidthLine",
+                                           "VeryLongLineString"};
+  const std::span<const std::string_view> input_span(lines.data(),
+                                                     lines.size());
+
+  // Target width matches or is smaller than current widths, meaning no padding
+  // is needed
+  constexpr int target_width = 14;
+
+  FormattingOptions options;
+  options.alignment = Alignment::Left;
+
+  // Act: Execute padding phase
+  const auto result = UnicodeTextScaler::ApplyHorizontalPadding(
+      input_span, options, target_width);
+
+  // Assert: Verify it chose the zero-allocation span tracking path
+  ASSERT_TRUE(
+      std::holds_alternative<std::span<const std::string_view>>(result));
+
+  const auto output_span = std::get<std::span<const std::string_view>>(result);
+  EXPECT_EQ(output_span.size(), 2);
+  EXPECT_EQ(output_span[0], "ExactWidthLine");
+  EXPECT_EQ(output_span[1], "VeryLongLineString");
+
+  // Memory verification: The returned span must point to the exact same input
+  // buffer address
+  EXPECT_EQ(output_span.data(), input_span.data());
+}
+
+TEST(UnicodeTextScalerTest, ApplyHorizontalPadding_LeftAlignment) {
+  // 1. Arrange: Input string view shorter than the target width constraint
+  std::array<std::string_view, 1> lines = {"Data"};  // Width = 4
+  std::span<const std::string_view> input_span(lines.data(), lines.size());
+
+  constexpr int target_width = 8;  // Requires 4 spaces of trailing padding
+
+  FormattingOptions options;
+  options.alignment = Alignment::Left;
+
+  // Act: Execute the padding pipeline pass
+  auto result = UnicodeTextScaler::ApplyHorizontalPadding(input_span, options,
+                                                          target_width);
+
+  // Assert: Must allocate modified structures since text changes occurred
+  ASSERT_TRUE(
+      std::holds_alternative<std::vector<UnicodeTextScaler::HorizontalLine>>(
+          result));
+
+  const auto& output_vec =
+      std::get<std::vector<UnicodeTextScaler::HorizontalLine>>(result);
+  ASSERT_EQ(output_vec.size(), 1);
+
+  // VERIFY VARIANT TYPE AND VALUE:
+  // Because padding spaces were added, this row MUST hold an owning std::string
+  // allocation
+  ASSERT_TRUE(std::holds_alternative<std::string>(output_vec[0]));
+
+  const auto& padded_line = std::get<std::string>(output_vec[0]);
+  EXPECT_EQ(padded_line, "Data    ");
+  EXPECT_EQ(padded_line.size(), 8);
+}
+
+TEST(UnicodeTextScalerTest, HorizonalLine_ToStringViewConversion) {
+  // Test Case 1: Validate when the underlying variant is a zero-copy
+  // std::string_view
+  std::string_view original_view = "ZeroCopyText";
+  UnicodeTextScaler::HorizontalLine line_from_view(original_view);
+
+  // Verify type integrity and that to_string_view() successfully resolves the
+  // data
+  ASSERT_TRUE(std::holds_alternative<std::string_view>(line_from_view));
+  EXPECT_EQ(line_from_view.to_string_view(), "ZeroCopyText");
+
+  // Explicit pointer sanity check: Ensure no copying or reallocation happened
+  EXPECT_EQ(line_from_view.to_string_view().data(), original_view.data());
+
+  // Test Case 2: Validate when the underlying variant is an owning padded
+  // std::string
+  std::string padded_string = "PaddedText    ";
+  const char* original_buffer_address = padded_string.data();
+
+  UnicodeTextScaler::HorizontalLine line_from_string(std::move(padded_string));
+
+  // Verify type integrity and that to_string_view() tracks the internal string
+  // buffer
+  ASSERT_TRUE(std::holds_alternative<std::string>(line_from_string));
+  EXPECT_EQ(line_from_string.to_string_view(), "PaddedText    ");
+
+  // Explicit pointer sanity check: Ensure it points directly to the
+  // vector-allocated string buffer
+  EXPECT_EQ(line_from_string.to_string_view().data(),
+            std::get<std::string>(line_from_string).data());
+}

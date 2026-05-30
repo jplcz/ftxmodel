@@ -5,6 +5,7 @@
 #include <ftxui/screen/terminal.hpp>
 #include <span>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace ftxmodel {
@@ -311,14 +312,16 @@ class UnicodeTextScaler {
   }
 
   // Represents a horizontally resolved line
-  struct HorizontalLine {
-    // If the line needed padding, this holds the newly allocated string.
-    // If it didn't, this stays empty.
-    std::string padded_buffer;
+  using HorizontalLine_base = std::variant<std::string_view, std::string>;
 
-    // This view always points to the correct text (either inside the original
-    // string or padded_buffer)
-    std::string_view active_view;
+  struct HorizontalLine : HorizontalLine_base {
+    using HorizontalLine_base::HorizontalLine_base;
+
+    [[nodiscard]] std::string_view to_string_view() const noexcept {
+      return std::visit(
+          [](const auto& f) -> std::string_view { return std::string_view(f); },
+          *this);
+    }
   };
 
   // Zero-allocation fallback variant token
@@ -330,7 +333,210 @@ class UnicodeTextScaler {
                                                 // padded string allocations
                    >;
 
+  // ============================================================================
+  // HORIZONTAL PADDING STAGE (NON-OWNING STREAM INPUT)
+  // ============================================================================
+  [[nodiscard]] static HorizontalPaddingResult ApplyHorizontalPadding(
+      std::span<const std::string_view> lines,
+      const FormattingOptions& options,
+      const int target_width) {
+    // QUICK SCAN FOR THE ZERO-ALLOCATION FAST PATH
+    // Check if all lines are already perfectly sized
+    bool padding_required = false;
+    for (const std::string_view line : lines) {
+      if (StringWidth(line) < target_width) {
+        padding_required = true;
+        break;
+      }
+    }
 
+    // Fast Path: If nothing needs resizing, forward the span right through
+    if (!padding_required) {
+      return lines;
+    }
+
+    // Padding is required
+    std::vector<HorizontalLine> modified_lines;
+    modified_lines.reserve(lines.size());
+
+    for (std::string_view line : lines) {
+      const int current_w = StringWidth(line);
+      const int padding_needed = target_width - current_w;
+
+      if (padding_needed <= 0) {
+        // No padding needed for this specific row: store a direct, zero-copy
+        // pointer view
+        modified_lines.emplace_back(line);
+        continue;
+      }
+
+      // Allocate a string only for rows that actually require padding spaces
+      std::string padded_str;
+      padded_str.reserve(static_cast<size_t>(target_width));
+
+      switch (options.alignment) {
+        case Alignment::Left:
+          padded_str.append(line.data(), line.size());
+          padded_str.append(static_cast<size_t>(padding_needed), ' ');
+          break;
+
+        case Alignment::Right:
+          padded_str.append(static_cast<size_t>(padding_needed), ' ');
+          padded_str.append(line.data(), line.size());
+          break;
+
+        case Alignment::Center: {
+          const int left_pad = padding_needed / 2;
+          const int right_pad = padding_needed - left_pad;
+          padded_str.append(static_cast<size_t>(left_pad), ' ');
+          padded_str.append(line.data(), line.size());
+          padded_str.append(static_cast<size_t>(right_pad), ' ');
+          break;
+        }
+      }
+
+      // Capture the string buffer and point the active view straight inside it
+      modified_lines.emplace_back(std::move(padded_str));
+    }
+
+    return modified_lines;
+  }
+
+  static std::string FormatText(const std::string_view value,
+                                const FormattingOptions& options) {
+    // Core Fast-Path Opt: Flat single row string, no vertical padding limits
+    // requested
+    if (value.find('\n') == std::string_view::npos && options.min_height <= 1) {
+      const int visual_w = StringWidth(value);
+
+      if (visual_w >= options.min_width &&
+          (options.max_width <= 0 || visual_w <= options.max_width) &&
+          (options.preferred_width <= 0 ||
+           visual_w == options.preferred_width) &&
+          options.alignment == Alignment::Left) {
+        return std::string(value);  // Bypasses the layout engine completely
+      }
+    }
+
+    return FullFormatPipelineFallback(value, options);
+  }
+
+ private:
+  // ============================================================================
+  // COMPLETE PIEPLINE EXECUTION ENGINE FOR RE-SHAPING OPERATIONS
+  // ============================================================================
+  static std::string FullFormatPipelineFallback(
+      const std::string_view value,
+      const FormattingOptions& options) {
+    // Step 1: Target Width Resolution Pass
+    const ftxui::Dimensions initial_bounds = GetTextBounds(value);
+    int target_width = (options.preferred_width > 0) ? options.preferred_width
+                                                     : initial_bounds.dimx;
+    if (options.max_width > 0 && target_width > options.max_width) {
+      target_width = options.max_width;
+    }
+    if (options.min_width > 0 && target_width < options.min_width) {
+      target_width = options.min_width;
+    }
+    if (target_width <= 0) {
+      target_width = 1;
+    }
+
+    // Step 2: Line Wrapping / Truncation Core Loop
+    std::vector<std::string_view> horizontal_slices;
+    std::vector<std::string>
+        ellipsis_allocations_cache;  // Holds truncated strings securely
+
+    size_t line_start = 0;
+    size_t offset = 0;
+    int current_line_w = 0;
+    const size_t total_bytes = value.size();
+
+    while (offset < total_bytes) {
+      if (value[offset] == '\n') {
+        horizontal_slices.push_back(
+            value.substr(line_start, offset - line_start));
+        offset++;
+        line_start = offset;
+        current_line_w = 0;
+        continue;
+      }
+
+      char32_t cp = 0;
+      std::string_view remaining = value.substr(offset);
+      const int bytes_consumed = DecodeUtf8(remaining, cp);
+
+      if (bytes_consumed == 0) {
+        offset++;
+        continue;
+      }
+
+      const std::string_view glyph =
+          remaining.substr(0, static_cast<size_t>(bytes_consumed));
+      const int glyph_w = StringWidth(glyph);
+
+      if (current_line_w + glyph_w > target_width) {
+        if (options.wrap_lines) {
+          horizontal_slices.push_back(
+              value.substr(line_start, offset - line_start));
+          line_start = offset;
+          current_line_w = glyph_w;
+        } else {
+          // Ellipsis truncation pass
+          std::string truncated(value.substr(line_start, offset - line_start));
+          const int ellipsis_w = StringWidth(options.ellipsis);
+          while (!truncated.empty() &&
+                 (current_line_w + ellipsis_w > target_width)) {
+            truncated.pop_back();
+            current_line_w = StringWidth(truncated);
+          }
+          ellipsis_allocations_cache.push_back(truncated + options.ellipsis);
+          horizontal_slices.push_back(ellipsis_allocations_cache.back());
+          line_start = total_bytes;  // Force breaks loop cleanly
+          break;
+        }
+      } else {
+        current_line_w += glyph_w;
+      }
+      offset += static_cast<size_t>(bytes_consumed);
+    }
+
+    if (line_start < total_bytes || (!value.empty() && value.back() == '\n')) {
+      horizontal_slices.push_back(
+          value.substr(line_start, total_bytes - line_start));
+    }
+
+    // Step 3: Run Horizontal Padding Phase
+    std::span<const std::string_view> wrapping_span(horizontal_slices.data(),
+                                                    horizontal_slices.size());
+    HorizontalPaddingResult horiz_res =
+        ApplyHorizontalPadding(wrapping_span, options, target_width);
+
+    // Standardize views to clear raw structures before passing into vertical
+    // constraints stage
+    std::vector<std::string_view> vertical_input;
+    if (std::holds_alternative<std::span<const std::string_view>>(horiz_res)) {
+      const auto span_data =
+          std::get<std::span<const std::string_view>>(horiz_res);
+      vertical_input.assign(span_data.begin(), span_data.end());
+    } else {
+      const auto& vec_data = std::get<std::vector<HorizontalLine>>(horiz_res);
+      vertical_input.reserve(vec_data.size());
+      for (const auto& line : vec_data) {
+        vertical_input.push_back(line.to_string_view());
+      }
+    }
+
+    // Step 4: Run Vertical Constraints Phase
+    const std::span<const std::string_view> vertical_span(
+        vertical_input.data(), vertical_input.size());
+
+    const VerticalLayoutResult vertical_res =
+        ApplyVerticalConstraints(vertical_span, options);
+
+    // Step 5: Final Row Assembly flattening
+    return AssembleParagraph(vertical_res, target_width);
+  }
 };
 
 }  // namespace ftxmodel
