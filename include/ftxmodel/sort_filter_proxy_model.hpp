@@ -255,20 +255,22 @@ inline SortFilterProxyModel::SortFilterProxyModel()
 inline SortFilterProxyModel::~SortFilterProxyModel() {}
 
 inline void SortFilterProxyModel::setFilterCallback(FilterCallback callback) {
+  beginResetModel();
   m_impl->filter_callback = std::move(callback);
   invalidate();
+  endResetModel();
 }
 
 inline void SortFilterProxyModel::sort(int column, bool ascending) {
+  beginResetModel();
   m_impl->sort_column = column;
   m_impl->sort_ascending = ascending;
   invalidate();
+  endResetModel();
 }
 
 inline void SortFilterProxyModel::invalidate() {
-  beginResetModel();
   m_impl->visual_cache.clear();
-  endResetModel();
 }
 
 inline ModelIndex SortFilterProxyModel::mapToSource(
