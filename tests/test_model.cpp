@@ -1,4 +1,3 @@
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <ftxmodel/abstract_item_model.hpp>
 #include <ftxmodel/abstract_item_view.hpp>
