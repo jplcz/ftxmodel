@@ -1,0 +1,42 @@
+{
+  "name": "ftxmodel C++ Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/base:resolute",
+
+  // Automatically provision all necessary system tools upon container creation
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    }
+  },
+
+  // Install build toolchains and both target compilers (GCC + Clang) natively
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y build-essential clang cmake ninja-build gdb lldb cppcheck valgrind",
+
+  // Configure VS Code workplace settings and standard C++ extensions natively
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "C_Cpp.default.compilerPath": "/usr/bin/clang++",
+        "C_Cpp.default.cppStandard": "c++20",
+        "cmake.cmakePath": "/usr/bin/cmake",
+        "cmake.generator": "Ninja",
+        "cmake.buildDirectory": "${workspaceFolder}/build",
+        "cmake.configureOnOpen": true
+      },
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "xaver.clang-format"
+      ]
+    }
+  },
+
+  // Ensure workspace files remain accessible without permission errors
+  "remoteUser": "vscode",
+
+  // Keep the container running in the background for active dev connections
+  "overrideCommand": true
+}
