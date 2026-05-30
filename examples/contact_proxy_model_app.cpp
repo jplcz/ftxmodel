@@ -64,6 +64,19 @@ class StringGridModel : public AbstractItemModel {
     return {std::format("{}_node_{}_{}", m_dataset_name, index.row(),
                         index.column())};
   }
+
+  std::any headerData(int section,
+                      Orientation orientation,
+                      ItemRole role = ItemRole::DisplayRole) const override {
+    if (role != ItemRole::DisplayRole) {
+      return {};
+    }
+    if (orientation == Orientation::Horizontal) {
+      return std::format("H:{}:{}", m_dataset_name, section);
+    } else {
+      return std::format("V:{}:{}", m_dataset_name, section);
+    }
+  }
 };
 
 // =========================================================================

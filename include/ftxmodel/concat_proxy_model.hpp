@@ -220,6 +220,66 @@ class ConcatProxyModel : public AbstractItemModel {
     return createIndex(row, column, proxy_index.internalPointer());
   }
 
+  std::any headerData(int section,
+                      Orientation orientation,
+                      ItemRole role = ItemRole::DisplayRole) const override {
+    if (section < 0) {
+      return std::any();
+    }
+
+    if (m_orientation == Orientation::Horizontal) {
+      if (orientation == Orientation::Horizontal) {
+        // --- Axis Match: Stitch column headers together sequentially ---
+        int column = section;
+        for (const auto& model : m_models) {
+          if (!model) {
+            continue;
+          }
+          const int columns = model->columnCount();
+          if (column < columns) {
+            return model->headerData(column, orientation, role);
+          }
+          column -= columns;
+        }
+      } else {
+        // --- Cross Axis: Generic vertical row index indicators ("1", "2", "3")
+        // ---
+        if (section < rowCount()) {
+          return std::to_string(section + 1);
+        }
+      }
+    } else {  // Orientation::Vertical
+      if (orientation == Orientation::Vertical) {
+        // --- Axis Match: Stitch row headers together sequentially ---
+        int row = section;
+        for (const auto& model : m_models) {
+          if (!model) {
+            continue;
+          }
+          const int rows = model->rowCount();
+          if (row < rows) {
+            return model->headerData(row, orientation, role);
+          }
+          row -= rows;
+        }
+      } else {
+        // --- Cross Axis: Forward horizontal headers from the first valid
+        // model,
+        //                 or fallback to a generic column label string. ---
+        for (const auto& model : m_models) {
+          if (model && section < model->columnCount()) {
+            return model->headerData(section, orientation, role);
+          }
+        }
+        if (section < columnCount()) {
+          return std::format("Column {}", section);
+        }
+      }
+    }
+
+    return std::any();
+  }
+
  private:
   void connectModel(AbstractItemModel* model) {
     m_connections.emplace_back(model->dataChanged.connect(
@@ -271,6 +331,20 @@ class ConcatProxyModel : public AbstractItemModel {
         model->beginResetModel.connect([this]() { this->beginResetModel(); }));
     m_connections.emplace_back(
         model->endResetModel.connect([this]() { this->endResetModel(); }));
+
+    m_connections.emplace_back(
+        model->headerDataChanged.connect([this, model](int section, int role) {
+          if (m_orientation == Orientation::Horizontal) {
+            // Horizontal alignment adds column offsets across split boundaries
+            const auto [row_offset, col_offset] =
+                this->findModelOffset(model, 0, section);
+            headerDataChanged(section + col_offset, role);
+          } else {
+            // Vertical alignment stacks models; columns match 1:1 up to max
+            // width
+            headerDataChanged(section, role);
+          }
+        }));
   }
 
   std::pair<int, int> findModelOffset(const AbstractItemModel* model_p,
