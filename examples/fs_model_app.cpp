@@ -11,13 +11,13 @@ int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
   // Initialize model pointing to the current active directory path "."
-  auto fsModel = std::make_unique<FileSystemModel>(".");
+  auto fsModel = std::make_shared<FileSystemModel>(".");
   auto fsDelegate = std::make_shared<FileSystemRouterDelegate>();
 
   // Pass component down into the multi-column separator TreeView engine
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(fsDelegate);
-  treeView.setModel(fsModel.get());
+  treeView.setModel(fsModel);
   treeView.setShowHeaders(true);
 
   auto baseComp = ftxui::Make<ftxui::ComponentBase>();

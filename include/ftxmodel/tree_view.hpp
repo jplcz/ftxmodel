@@ -74,7 +74,7 @@ class TreeView : public AbstractGridLikeItemView {
   explicit TreeView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(std::move(std::move(refreshCb))) {}
 
-  void setModel(AbstractItemModel* model) override {
+  void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
     AbstractItemView::setModel(model);
     expanded_nodes_.clear();
     selected_linear_row_ = 0;

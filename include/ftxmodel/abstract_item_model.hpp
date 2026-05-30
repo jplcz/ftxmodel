@@ -388,7 +388,16 @@ class AbstractItemModel {
    */
   sigslot::signal_st<> endRemoveColumns;
 
+  /**
+   * @brief Signal alerting views that the entire internal model layout
+   * structure is about to drop and reset.
+   */
   sigslot::signal_st<> beginResetModel;
+
+  /**
+   * @brief Signal alerting views that a complete reset layout wipe is finished,
+   * triggering a comprehensive view cache rebuild.
+   */
   sigslot::signal_st<> endResetModel;
 };
 

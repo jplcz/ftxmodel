@@ -102,13 +102,13 @@ class FileTreeModel : public AbstractItemModel {
 int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
-  auto model = std::make_unique<FileTreeModel>();
+  auto model = std::make_shared<FileTreeModel>();
   auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
                                                        ftxui::Color::Yellow);
 
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(delegate);
-  treeView.setModel(model.get());
+  treeView.setModel(model);
 
   auto baseComp = ftxui::Make<ftxui::ComponentBase>();
   auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {

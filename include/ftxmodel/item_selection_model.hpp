@@ -5,7 +5,8 @@ namespace ftxmodel {
 
 class ItemSelectionModel {
  public:
-  explicit ItemSelectionModel(AbstractItemModel* model) : model_(model) {}
+  explicit ItemSelectionModel(const std::shared_ptr<AbstractItemModel>& model)
+      : model_(model) {}
 
   void setCurrentIndex(const ModelIndex& index) {
     if (!model_ || !index.isValid()) {
@@ -23,13 +24,13 @@ class ItemSelectionModel {
   ModelIndex currentIndex() const {
     return model_ ? model_->findIndexById(currentId()) : ModelIndex();
   }
-  AbstractItemModel* model() const { return model_; }
+  AbstractItemModel* model() const { return model_.get(); }
 
   // SigSlot event to notify views when focus switches rows/columns
   sigslot::signal_st<const UniqueNodeId&> currentIndexChanged;
 
  private:
-  AbstractItemModel* model_;
+  std::shared_ptr<AbstractItemModel> model_;
   UniqueNodeId current_id_ = {nullptr};
 };
 

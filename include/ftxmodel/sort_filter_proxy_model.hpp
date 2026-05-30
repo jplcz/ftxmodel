@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <memory>
 #include "abstract_proxy_model.hpp"
 
@@ -265,8 +266,9 @@ inline void SortFilterProxyModel::sort(int column, bool ascending) {
 }
 
 inline void SortFilterProxyModel::invalidate() {
+  beginResetModel();
   m_impl->visual_cache.clear();
-  headerDataChanged(0, 0);
+  endResetModel();
 }
 
 inline ModelIndex SortFilterProxyModel::mapToSource(

@@ -1,4 +1,5 @@
 #include <ftxmodel/flatten_tree_proxy_model.hpp>
+#include <ftxmodel/sort_filter_proxy_model.hpp>
 #include <ftxmodel/table_view.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -11,19 +12,18 @@ using namespace ftxmodel;
 int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
-  // 1. Initialize our nested underlying source model
   auto source_model = std::make_shared<TreeSourceModel>();
 
-  // 2. Wrap it with your 1D linear FlattenTreeProxyModel
   auto flat_proxy = std::make_shared<FlattenTreeProxyModel>();
   flat_proxy->setSourceModel(source_model);
 
-  // Initial state: start with some nodes visible and expanded
-  flat_proxy->expand(0);  // Expands "src"
+  auto sorted_proxy = std::make_shared<SortFilterProxyModel>();
+  sorted_proxy->setSourceModel(flat_proxy);
+  sorted_proxy->sort(0);
 
   TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   tableView.setItemDelegate(std::make_shared<ftxmodel::StyledTextDelegate>());
-  tableView.setModel(flat_proxy.get());
+  tableView.setModel(sorted_proxy);
 
   auto baseComponent = ftxui::Make<ftxui::ComponentBase>();
   auto appController =
@@ -54,6 +54,10 @@ int main() {
         }
         if (event == ftxui::Event::Character('-')) {
           flat_proxy->collapseAll();
+          return true;
+        }
+        if (event == ftxui::Event::Return) {
+          flat_proxy->expandAll();
           return true;
         }
         return false;

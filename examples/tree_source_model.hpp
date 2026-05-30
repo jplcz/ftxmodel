@@ -1,11 +1,9 @@
 #pragma once
 #include <any>
-#include <ftxmodel/abstract_item_model.hpp>  // Assumed baseline architecture match
+#include <ftxmodel/abstract_item_model.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-
-namespace ftxmodel {
 
 // Basic structural data node
 struct Node {
@@ -15,30 +13,117 @@ struct Node {
   std::vector<std::unique_ptr<Node>> children;
 };
 
-class TreeSourceModel : public AbstractItemModel {
+class TreeSourceModel : public ftxmodel::AbstractItemModel {
  public:
   TreeSourceModel() {
-    // Build a mock file explorer tree hierarchy
+    // 1. Root Workspace Node
     auto root = std::make_unique<Node>("Root", "Folder");
 
+    // =========================================================================
+    // LAYER 1 BRANCH: .github (Hidden configurations tracking)
+    // =========================================================================
+    auto github = std::make_unique<Node>(".github", "Folder", root.get());
+    auto workflows =
+        std::make_unique<Node>("workflows", "Folder", github.get());
+    workflows->children.emplace_back(
+        std::make_unique<Node>("ci.yml", "File", workflows.get()));
+    workflows->children.emplace_back(
+        std::make_unique<Node>("cd.yml", "File", workflows.get()));
+    github->children.emplace_back(std::move(workflows));
+    root->children.emplace_back(std::move(github));
+
+    // =========================================================================
+    // LAYER 1 BRANCH: src (Core implementation layers)
+    // =========================================================================
     auto src = std::make_unique<Node>("src", "Folder", root.get());
     src->children.emplace_back(
         std::make_unique<Node>("main.cpp", "File", src.get()));
     src->children.emplace_back(
         std::make_unique<Node>("utils.hpp", "File", src.get()));
 
+    // Deeply nesting a component layer inside src: src -> components -> views
+    auto components = std::make_unique<Node>("components", "Folder", src.get());
+    auto views = std::make_unique<Node>("views", "Folder", components.get());
+    views->children.emplace_back(
+        std::make_unique<Node>("table_view.cpp", "File", views.get()));
+    views->children.emplace_back(
+        std::make_unique<Node>("tree_view.cpp", "File", views.get()));
+    components->children.emplace_back(std::move(views));
+
+    auto models = std::make_unique<Node>("models", "Folder", components.get());
+    models->children.emplace_back(
+        std::make_unique<Node>("flatten_model.cpp", "File", models.get()));
+    components->children.emplace_back(std::move(models));
+
+    src->children.emplace_back(std::move(components));
+    root->children.emplace_back(std::move(src));
+
+    // =========================================================================
+    // LAYER 1 BRANCH: assets (Static media and properties mappings)
+    // =========================================================================
     auto assets = std::make_unique<Node>("assets", "Folder", root.get());
+
+    // assets -> icons -> raster / vector subfolders
     auto icons = std::make_unique<Node>("icons", "Folder", assets.get());
-    icons->children.emplace_back(
-        std::make_unique<Node>("logo.png", "File", icons.get()));
+
+    auto raster = std::make_unique<Node>("raster", "Folder", icons.get());
+    raster->children.emplace_back(
+        std::make_unique<Node>("logo_32x32.png", "File", raster.get()));
+    raster->children.emplace_back(
+        std::make_unique<Node>("logo_64x64.png", "File", raster.get()));
+    icons->children.emplace_back(std::move(raster));
+
+    auto vector = std::make_unique<Node>("vector", "Folder", icons.get());
+    vector->children.emplace_back(
+        std::make_unique<Node>("banner.svg", "File", vector.get()));
+    icons->children.emplace_back(std::move(vector));
+
     assets->children.emplace_back(std::move(icons));
 
-    root->children.emplace_back(std::move(src));
+    auto themes = std::make_unique<Node>("themes", "Folder", assets.get());
+    themes->children.emplace_back(
+        std::make_unique<Node>("dark_mode.json", "File", themes.get()));
+    themes->children.emplace_back(
+        std::make_unique<Node>("light_mode.json", "File", themes.get()));
+    assets->children.emplace_back(std::move(themes));
+
     root->children.emplace_back(std::move(assets));
+
+    // =========================================================================
+    // LAYER 1 BRANCH: build (Simulated build artifacts directory tree)
+    // =========================================================================
+    auto build = std::make_unique<Node>("build", "Folder", root.get());
+    auto cmake_files =
+        std::make_unique<Node>("CMakeFiles", "Folder", build.get());
+    auto ftxmodel_dir =
+        std::make_unique<Node>("ftxmodel.dir", "Folder", cmake_files.get());
+    ftxmodel_dir->children.emplace_back(
+        std::make_unique<Node>("main.cpp.o", "File", ftxmodel_dir.get()));
+    ftxmodel_dir->children.emplace_back(
+        std::make_unique<Node>("utils.cpp.o", "File", ftxmodel_dir.get()));
+    cmake_files->children.emplace_back(std::move(ftxmodel_dir));
+    build->children.emplace_back(std::move(cmake_files));
+
+    build->children.emplace_back(
+        std::make_unique<Node>("Makefile", "File", build.get()));
+    build->children.emplace_back(
+        std::make_unique<Node>("CMakeCache.txt", "File", build.get()));
+    root->children.emplace_back(std::move(build));
+
+    // =========================================================================
+    // LAYER 1 SIBLINGS: Root files
+    // =========================================================================
+    root->children.emplace_back(
+        std::make_unique<Node>("CMakeLists.txt", "File", root.get()));
+    root->children.emplace_back(
+        std::make_unique<Node>("README.md", "File", root.get()));
+    root->children.emplace_back(
+        std::make_unique<Node>(".gitignore", "File", root.get()));
+
     root_node_ = std::move(root);
   }
 
-  int rowCount(const ModelIndex& parent) const override {
+  int rowCount(const ftxmodel::ModelIndex& parent) const override {
     if (!parent.isValid()) {
       return static_cast<int>(root_node_->children.size());
     }
@@ -46,11 +131,12 @@ class TreeSourceModel : public AbstractItemModel {
     return static_cast<int>(parent_node->children.size());
   }
 
-  int columnCount(const ModelIndex&) const override { return 1; }
+  int columnCount(const ftxmodel::ModelIndex&) const override { return 1; }
 
-  ModelIndex index(int row,
-                   int column,
-                   const ModelIndex& parent) const override {
+  ftxmodel::ModelIndex index(
+      int row,
+      int column,
+      const ftxmodel::ModelIndex& parent) const override {
     if (row < 0 || column < 0) {
       return {};
     }
@@ -64,7 +150,8 @@ class TreeSourceModel : public AbstractItemModel {
                        parent_node->children[static_cast<size_t>(row)].get());
   }
 
-  ModelIndex parent(const ModelIndex& child) const override {
+  ftxmodel::ModelIndex parent(
+      const ftxmodel::ModelIndex& child) const override {
     if (!child.isValid()) {
       return {};
     }
@@ -85,7 +172,7 @@ class TreeSourceModel : public AbstractItemModel {
     return {};
   }
 
-  bool hasChildren(const ModelIndex& index) const override {
+  bool hasChildren(const ftxmodel::ModelIndex& index) const override {
     if (!index.isValid()) {
       return !root_node_->children.empty();
     }
@@ -93,28 +180,26 @@ class TreeSourceModel : public AbstractItemModel {
     return !node->children.empty();
   }
 
-  std::any data(const ModelIndex& index, ItemRole role) const override {
-    if (!index.isValid() || role != ItemRole::DisplayRole) {
+  std::any data(const ftxmodel::ModelIndex& index,
+                ftxmodel::ItemRole role) const override {
+    if (!index.isValid() || role != ftxmodel::ItemRole::DisplayRole) {
       return {};
     }
     auto* node = static_cast<Node*>(index.internalPointer());
     return node->name;
   }
 
-  UniqueNodeId uniqueId(const ModelIndex& index) const override {
+  ftxmodel::UniqueNodeId uniqueId(
+      const ftxmodel::ModelIndex& index) const override {
     if (!index.isValid()) {
       return {nullptr};
     }
-    // Use the raw memory address of our stable data nodes as the unique
-    // structural identifier
     return {index.internalPointer()};
   }
 
-  // Helper math loop to trace indentation depth for our visual view layout
-  // components
-  int calculateNodeDepth(const ModelIndex& index) const {
+  int calculateNodeDepth(const ftxmodel::ModelIndex& index) const {
     int depth = 0;
-    ModelIndex current = index;
+    ftxmodel::ModelIndex current = index;
     while (current.isValid()) {
       depth++;
       current = parent(current);
@@ -125,5 +210,3 @@ class TreeSourceModel : public AbstractItemModel {
  private:
   std::unique_ptr<Node> root_node_;
 };
-
-}  // namespace ftxmodel

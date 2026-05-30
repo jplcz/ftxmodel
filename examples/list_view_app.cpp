@@ -92,13 +92,13 @@ int main() {
                                         {"cmake-build-system", true},
                                         {"ftxui-ux-lib", false},
                                         {"sigslot", false}};
-  auto model = std::make_unique<PackageListModel>(dataItems);
+  auto model = std::make_shared<PackageListModel>(dataItems);
   auto delegate = std::make_shared<PackageItemDelegate>();
 
   // Setup view with a screen refresh closure mapping sigslot back into FTXUI
   auto refreshUiLambda = [&]() { screen.PostEvent(Event::Custom); };
   ListView listView(refreshUiLambda);
-  listView.setModel(model.get());
+  listView.setModel(model);
   listView.setItemDelegate(delegate);
 
   // Create interactive key handling component intercept

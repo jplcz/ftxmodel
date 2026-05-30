@@ -268,13 +268,13 @@ int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
   // Instantiate the explicit application-specific structures
-  auto model = std::make_unique<TaskThreadModel>();
+  auto model = std::make_shared<TaskThreadModel>();
   auto delegate = std::make_shared<TaskThreadRouterDelegate>();
 
   // Configure the multi-column TreeView
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(delegate);
-  treeView.setModel(model.get());
+  treeView.setModel(model);
   treeView.setShowHeaders(true);
 
   // Bind Keyboard Events to full spatial navigation loops

@@ -17,7 +17,7 @@ class ListView : public AbstractGridLikeItemView {
   explicit ListView(std::function<void()> refreshCb)
       : trigger_ftxui_refresh_(refreshCb) {}
 
-  void setModel(AbstractItemModel* model) override {
+  void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
     AbstractItemView::setModel(model);
     selected_row_ = 0;
     if (model && model->rowCount() > 0) {

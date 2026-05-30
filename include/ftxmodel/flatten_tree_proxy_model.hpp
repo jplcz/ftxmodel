@@ -18,7 +18,8 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
     const void* targetNodePtr = child.internalPointer();
     for (size_t i = 0; i < impl_->flat_lookup_cache.size(); ++i) {
       if (impl_->flat_lookup_cache[i].internalPointer() == targetNodePtr) {
-        return createIndex(static_cast<int>(i), child.column(), nullptr);
+        return createIndex(static_cast<int>(i), child.column(),
+                           const_cast<void*>(targetNodePtr));
       }
     }
     return {};
@@ -86,12 +87,14 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
     if (row < 0 || row >= static_cast<int>(impl_->flat_lookup_cache.size())) {
       return;
     }
+    beginResetModel();
     const ModelIndex localIndex = index(row, 0, ModelIndex());
     const ModelIndex sourceIndex = mapToSource(localIndex);
     const auto nodeId = sourceIndex.uniqueId();
     if (impl_->expanded_nodes.insert(nodeId).second) {
       invalidate();
     }
+    endResetModel();
   }
 
   void collapse(const int row) {
@@ -102,6 +105,7 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
     const ModelIndex localIndex = index(row, 0, ModelIndex());
     const ModelIndex sourceIndex = mapToSource(localIndex);
     const auto nodeId = sourceIndex.uniqueId();
+    beginResetModel();
     if (impl_->expanded_nodes.erase(nodeId) > 0) {
       // Purge only if we'd overrun array size
       if (impl_->expanded_nodes.size() >= impl_->flat_lookup_cache.size()) {
@@ -109,13 +113,16 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
       }
       invalidate();
     }
+    endResetModel();
   }
 
   void collapseAll() {
     impl_->ensureCache(this);
     if (!impl_->expanded_nodes.empty()) {
+      beginResetModel();
       impl_->expanded_nodes.clear();
       invalidate();
+      endResetModel();
     }
   }
 
@@ -124,10 +131,12 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
    * source model topology.
    */
   void expandAll() {
+    beginResetModel();
     impl_->ensureCache(this);
     impl_->expanded_nodes.clear();
     impl_->gatherExpandAll(this, ModelIndex());
     invalidate();
+    endResetModel();
   }
   /**
    * @brief Recursively expands a specific node and every single one of its
@@ -149,11 +158,13 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
       return;  // Fast escape boundary if it's a leaf node or empty
     }
 
+    beginResetModel();
     UniqueNodeId branchId = sourceModel()->uniqueId(sourceIdx);
     impl_->expanded_nodes.insert(branchId);
 
     impl_->gatherExpandAll(this, sourceIdx);
     invalidate();
+    endResetModel();
   }
 
   /**
@@ -176,19 +187,19 @@ class FlattenTreeProxyModel : public AbstractProxyModel {
       return;  // Fast escape if it's a leaf node or empty
     }
 
+    beginResetModel();
+
     UniqueNodeId branchId = sourceModel()->uniqueId(sourceIdx);
 
     if (impl_->expanded_nodes.erase(branchId) > 0) {
       cleanStaleNodes(true);
       invalidate();  // Rebuild the 1D visual timeline map exactly once
     }
+    endResetModel();
   }
 
  protected:
-  void invalidate() override {
-    impl_->flat_lookup_cache.clear();
-    headerDataChanged(0, 0);
-  }
+  void invalidate() override { impl_->flat_lookup_cache.clear(); }
 
  private:
   void cleanStaleNodes(bool skipInvalidate) {

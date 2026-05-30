@@ -211,8 +211,8 @@ int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
   // 1. Instantiate Data Models
-  auto metricsModel = std::make_unique<ServerMetricsModel>();
-  auto configModel = std::make_unique<ConfigTreeModel>();
+  auto metricsModel = std::make_shared<ServerMetricsModel>();
+  auto configModel = std::make_shared<ConfigTreeModel>();
 
   // 2. Instantiate Base Presentation Delegates
   auto textLeft = std::make_shared<StyledTextDelegate>(Alignment::Left,
@@ -234,7 +234,7 @@ int main() {
 
   TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   tableView.setItemDelegate(tableRouter);
-  tableView.setModel(metricsModel.get());
+  tableView.setModel(metricsModel);
   tableView.setShowHeaders(true);
 
   // ========================================================================
@@ -253,7 +253,7 @@ int main() {
 
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(treeRouter);
-  treeView.setModel(configModel.get());
+  treeView.setModel(configModel);
   treeView.setShowHeaders(true);
 
   // ========================================================================

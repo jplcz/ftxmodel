@@ -114,12 +114,12 @@ class TableColumnRouterDelegate : public ItemDelegate {
 int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
-  auto model = std::make_unique<TaskTableModel>();
+  auto model = std::make_shared<TaskTableModel>();
   auto delegate = std::make_shared<TableColumnRouterDelegate>();
 
   TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   tableView.setItemDelegate(delegate);
-  tableView.setModel(model.get());
+  tableView.setModel(model);
 
   auto baseComponent = ftxui::Make<ftxui::ComponentBase>();
   auto appController =
