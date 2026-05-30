@@ -2,7 +2,9 @@
 #include <algorithm>
 #include <string>
 #include <string_view>
+
 #include "ftxui/screen/terminal.hpp"
+#include "unicode_text_scaler.hpp"
 
 namespace ftxmodel {
 
@@ -34,9 +36,10 @@ class TextSizeConstraints {
   // ==========================================================================
 
   // Computes the definitive layout width footprint for sizeHint queries
-  int calculateWidthHint(const std::string_view& rawText) const {
-    int target = preferred_width_ >= 0 ? preferred_width_
-                                       : static_cast<int>(rawText.length());
+  [[nodiscard]] int calculateWidthHint(const std::string_view rawText) const {
+    const auto size = UnicodeTextScaler::GetTextBounds(rawText);
+
+    int target = preferred_width_ >= 0 ? preferred_width_ : size.dimx;
 
     // Apply maximum caps if explicitly set
     if (max_width_ >= 0) {
@@ -49,13 +52,13 @@ class TextSizeConstraints {
 
   // Clips a text string and handles ellipsis formatting if it exceeds
   // constraints
-  std::string applyBounds(const std::string_view& rawText) const {
+  [[nodiscard]] std::string applyBounds(std::string_view rawText) const {
     std::string text{rawText};
 
     // Handle Truncation (Max Width Boundary Check)
     if (max_width_ >= 0 && static_cast<int>(text.length()) > max_width_) {
       if (max_width_ > 3) {
-        text = text.substr(0, static_cast<size_t>(max_width_ - 3)) + "...";
+        text = text.substr(0, static_cast<size_t>(max_width_ - 1)) + "…";
       } else {
         text = text.substr(0, static_cast<size_t>(max_width_));
       }
@@ -63,7 +66,9 @@ class TextSizeConstraints {
 
     // Handle Padding (Minimum Width Boundary Check)
     if (static_cast<int>(text.length()) < min_width_) {
-      text.append(static_cast<size_t>(min_width_ - (int)text.length()), ' ');
+      text.append(
+          static_cast<size_t>(min_width_ - static_cast<int>(text.length())),
+          ' ');
     }
 
     return text;

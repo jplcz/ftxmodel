@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "text_size_constraints.hpp"
+#include "unicode_text_scaler.hpp"
 
 namespace ftxmodel {
 
