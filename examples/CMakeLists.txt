@@ -15,3 +15,14 @@ AddExample(multi_router_delegate_app.cpp)
 AddExample(format_text_app.cpp)
 AddExample(flatten_model.cpp)
 AddExample(contact_proxy_model_app.cpp)
+
+find_package(SQLite3)
+
+if(SQLite3_FOUND)
+    message(STATUS "SQLite3 found successfully for examples")
+
+    AddExample(sqlite_example_app.cpp)
+    target_link_libraries(sqlite_example_app PRIVATE SQLite::SQLite3)
+else()
+    message(WARNING "SQLite3 was requested for examples but could not be located on the system.")
+endif()
