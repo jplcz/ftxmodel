@@ -103,8 +103,8 @@ int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
   auto model = std::make_unique<FileTreeModel>();
-  auto delegate = std::make_shared<StyledTextDelegate>(
-      StyledTextDelegate::Alignment::Left, ftxui::Color::Yellow);
+  auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
+                                                       ftxui::Color::Yellow);
 
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(delegate);

@@ -202,9 +202,8 @@ class TaskThreadModel : public AbstractItemModel {
 // ============================================================================
 class TaskThreadRouterDelegate : public ItemDelegate {
  private:
-  StyledTextDelegate left_aligned_text_{StyledTextDelegate::Alignment::Left,
-                                        ftxui::Color::White};
-  StyledTextDelegate right_aligned_meta_{StyledTextDelegate::Alignment::Right,
+  StyledTextDelegate left_aligned_text_{Alignment::Left, ftxui::Color::White};
+  StyledTextDelegate right_aligned_meta_{Alignment::Right,
                                          ftxui::Color::CyanLight};
   ProgressBarDelegate cpu_gauge_bar_{
       30.0f, ftxui::Color::Yellow1};  // Normalized scaling capped at 30%

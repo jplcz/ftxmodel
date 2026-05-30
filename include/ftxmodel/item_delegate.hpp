@@ -34,8 +34,6 @@ class ItemDelegate {
 
 class StyledTextDelegate : public ItemDelegate {
  public:
-  enum class Alignment { Left, Center, Right };
-
   StyledTextDelegate(Alignment align = Alignment::Left,
                      ftxui::Color color = ftxui::Color::White,
                      TextSizeConstraints constraints = {})

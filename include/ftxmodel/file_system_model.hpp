@@ -211,14 +211,10 @@ class FileSystemModel : public AbstractItemModel {
 
 class FileSystemRouterDelegate : public ItemDelegate {
  private:
-  StyledTextDelegate name_dir_{StyledTextDelegate::Alignment::Left,
-                               ftxui::Color::Yellow};
-  StyledTextDelegate name_file_{StyledTextDelegate::Alignment::Left,
-                                ftxui::Color::White};
-  StyledTextDelegate meta_right_{StyledTextDelegate::Alignment::Right,
-                                 ftxui::Color::CyanLight};
-  StyledTextDelegate type_center_{StyledTextDelegate::Alignment::Center,
-                                  ftxui::Color::GrayLight};
+  StyledTextDelegate name_dir_{Alignment::Left, ftxui::Color::Yellow};
+  StyledTextDelegate name_file_{Alignment::Left, ftxui::Color::White};
+  StyledTextDelegate meta_right_{Alignment::Right, ftxui::Color::CyanLight};
+  StyledTextDelegate type_center_{Alignment::Center, ftxui::Color::GrayLight};
 
  public:
   ftxui::Element createWidget(const ModelIndex& index,

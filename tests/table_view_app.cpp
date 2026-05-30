@@ -70,8 +70,7 @@ class TaskTableModel : public AbstractItemModel {
 // 2. Multi-Column Router Delegate Mapping Existing Delegate Types
 class TableColumnRouterDelegate : public ItemDelegate {
  private:
-  StyledTextDelegate text_del_{StyledTextDelegate::Alignment::Left,
-                               ftxui::Color::White,
+  StyledTextDelegate text_del_{Alignment::Left, ftxui::Color::White,
                                TextSizeConstraints(32, 32)};
   CheckBoxDelegate check_del_;
   ProgressBarDelegate progress_del_{100.0f};

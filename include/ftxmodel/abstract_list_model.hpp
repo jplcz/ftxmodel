@@ -6,7 +6,7 @@ namespace ftxmodel {
 // Assuming our previous ModelIndex definition is available
 class AbstractListModel : public AbstractItemModel {
  public:
-  virtual ~AbstractListModel() = default;
+  ~AbstractListModel() override = default;
 
   // A list ALWAYS has exactly 1 column
   int columnCount(const ModelIndex& = ModelIndex()) const final { return 1; }

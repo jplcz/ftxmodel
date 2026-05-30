@@ -215,10 +215,10 @@ int main() {
   auto configModel = std::make_unique<ConfigTreeModel>();
 
   // 2. Instantiate Base Presentation Delegates
-  auto textLeft = std::make_shared<StyledTextDelegate>(
-      StyledTextDelegate::Alignment::Left, ftxui::Color::White);
+  auto textLeft = std::make_shared<StyledTextDelegate>(Alignment::Left,
+                                                       ftxui::Color::White);
   auto textRight = std::make_shared<StyledTextDelegate>(
-      StyledTextDelegate::Alignment::Right, ftxui::Color::CyanLight);
+      Alignment::Right, ftxui::Color::CyanLight);
   auto checkDel = std::make_shared<CheckBoxDelegate>();
   auto progressDel =
       std::make_shared<ProgressBarDelegate>(100.0f, ftxui::Color::Yellow1);
