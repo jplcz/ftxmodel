@@ -21,6 +21,15 @@ int main() {
   sorted_proxy->setSourceModel(flat_proxy);
   sorted_proxy->sort(0);
 
+  std::locale system_locale("");
+
+  sorted_proxy->setSortCallback(
+      [&](const ModelIndex& lhs, const ModelIndex& rhs) -> bool {
+        const auto lstring = AnyToStringTranslator::Translate(lhs.data());
+        const auto rstring = AnyToStringTranslator::Translate(rhs.data());
+        return system_locale(lstring, rstring);
+      });
+
   TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   tableView.setItemDelegate(std::make_shared<ftxmodel::StyledTextDelegate>());
   tableView.setModel(sorted_proxy);

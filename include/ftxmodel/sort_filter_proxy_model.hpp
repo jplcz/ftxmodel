@@ -30,6 +30,9 @@ class SortFilterProxyModel : public AbstractProxyModel {
    */
   using FilterCallback = std::function<bool(const ModelIndex&)>;
 
+  using LessThanCallback =
+      std::function<bool(const ModelIndex& left, const ModelIndex& right)>;
+
   /**
    * @brief Constructs an empty SortFilterProxyModel with caching subsystems
    * initialized.
@@ -51,6 +54,12 @@ class SortFilterProxyModel : public AbstractProxyModel {
    * completely disable filtering.
    */
   void setFilterCallback(FilterCallback callback);
+
+  /**
+   * @brief Assigns a custom sorting comparison rule and immediately forces a
+   * layout re-sort.
+   */
+  void setSortCallback(LessThanCallback callback);
 
   /**
    * @brief Commands the proxy to sort its layout structures based on a target
@@ -127,6 +136,7 @@ struct SortFilterProxyModel::Impl {
   FilterCallback filter_callback = nullptr;
   int sort_column = -1;
   bool sort_ascending = true;
+  LessThanCallback sort_callback_;
 
   struct StableNodeMapping {
     const void* source_node_ptr;
@@ -168,55 +178,74 @@ struct SortFilterProxyModel::Impl {
 
     // Phase 2: Sort
     if (sort_column >= 0 && !allowedNodes.empty()) {
-      std::ranges::stable_sort(
-          allowedNodes,
-          [this, src](const StableNodeMapping& a, const StableNodeMapping& b) {
-            const ModelIndex srcParentA =
-                src->findIndexById(UniqueNodeId{a.source_parent_ptr});
-            ModelIndex idxA =
-                src->findIndexById(UniqueNodeId{a.source_node_ptr}, srcParentA);
-            idxA = src->index(idxA.row(), sort_column, srcParentA);
+      if (sort_callback_) {
+        std::ranges::stable_sort(allowedNodes, [this, src](
+                                                   const StableNodeMapping& a,
+                                                   const StableNodeMapping& b) {
+          const ModelIndex srcParentA =
+              src->findIndexById(UniqueNodeId{a.source_parent_ptr});
+          ModelIndex idxA =
+              src->findIndexById(UniqueNodeId{a.source_node_ptr}, srcParentA);
+          idxA = src->index(idxA.row(), sort_column, srcParentA);
 
-            const ModelIndex srcParentB =
-                src->findIndexById(UniqueNodeId{b.source_parent_ptr});
-            ModelIndex idxB =
-                src->findIndexById(UniqueNodeId{b.source_node_ptr}, srcParentB);
-            idxB = src->index(idxB.row(), sort_column, srcParentB);
+          const ModelIndex srcParentB =
+              src->findIndexById(UniqueNodeId{b.source_parent_ptr});
+          ModelIndex idxB =
+              src->findIndexById(UniqueNodeId{b.source_node_ptr}, srcParentB);
+          idxB = src->index(idxB.row(), sort_column, srcParentB);
 
-            const std::any valA = src->data(idxA, ItemRole::DisplayRole);
-            const std::any valB = src->data(idxB, ItemRole::DisplayRole);
+          return sort_callback_(idxA, idxB);
+        });
+      } else {
+        std::ranges::stable_sort(allowedNodes, [this, src](
+                                                   const StableNodeMapping& a,
+                                                   const StableNodeMapping& b) {
+          const ModelIndex srcParentA =
+              src->findIndexById(UniqueNodeId{a.source_parent_ptr});
+          ModelIndex idxA =
+              src->findIndexById(UniqueNodeId{a.source_node_ptr}, srcParentA);
+          idxA = src->index(idxA.row(), sort_column, srcParentA);
 
-            // Fast-path checking optimization: if both items share the exact
-            // same type, extract and evaluate them natively to avoid string
-            // conversion overhead.
-            if (valA.type() == valB.type()) {
-              if (valA.type() == typeid(int)) {
-                const bool isLessThan =
-                    std::any_cast<int>(valA) < std::any_cast<int>(valB);
-                return sort_ascending ? isLessThan : !isLessThan;
-              }
-              if (valA.type() == typeid(std::int64_t)) {
-                const bool isLessThan = std::any_cast<std::int64_t>(valA) <
-                                        std::any_cast<std::int64_t>(valB);
-                return sort_ascending ? isLessThan : !isLessThan;
-              }
-              if (valA.type() == typeid(std::string)) {
-                const bool isLessThan =
-                    std::any_cast<const std::string&>(valA) <
-                    std::any_cast<const std::string&>(valB);
-                return sort_ascending ? isLessThan : !isLessThan;
-              }
+          const ModelIndex srcParentB =
+              src->findIndexById(UniqueNodeId{b.source_parent_ptr});
+          ModelIndex idxB =
+              src->findIndexById(UniqueNodeId{b.source_node_ptr}, srcParentB);
+          idxB = src->index(idxB.row(), sort_column, srcParentB);
+
+          const std::any valA = src->data(idxA, ItemRole::DisplayRole);
+          const std::any valB = src->data(idxB, ItemRole::DisplayRole);
+
+          // Fast-path checking optimization: if both items share the exact
+          // same type, extract and evaluate them natively to avoid string
+          // conversion overhead.
+          if (valA.type() == valB.type()) {
+            if (valA.type() == typeid(int)) {
+              const bool isLessThan =
+                  std::any_cast<int>(valA) < std::any_cast<int>(valB);
+              return sort_ascending ? isLessThan : !isLessThan;
             }
+            if (valA.type() == typeid(std::int64_t)) {
+              const bool isLessThan = std::any_cast<std::int64_t>(valA) <
+                                      std::any_cast<std::int64_t>(valB);
+              return sort_ascending ? isLessThan : !isLessThan;
+            }
+            if (valA.type() == typeid(std::string)) {
+              const bool isLessThan = std::any_cast<const std::string&>(valA) <
+                                      std::any_cast<const std::string&>(valB);
+              return sort_ascending ? isLessThan : !isLessThan;
+            }
+          }
 
-            // Unified Fallback Path: If types are mismatched (e.g., int vs
-            // int64) or represent unknown/registered structures, seamlessly
-            // flatten them via our translation engine.
-            const std::string strA = AnyToStringTranslator::Translate(valA);
-            const std::string strB = AnyToStringTranslator::Translate(valB);
+          // Unified Fallback Path: If types are mismatched (e.g., int vs
+          // int64) or represent unknown/registered structures, seamlessly
+          // flatten them via our translation engine.
+          const std::string strA = AnyToStringTranslator::Translate(valA);
+          const std::string strB = AnyToStringTranslator::Translate(valB);
 
-            const bool isLessThan = strA < strB;
-            return sort_ascending ? isLessThan : !isLessThan;
-          });
+          const bool isLessThan = strA < strB;
+          return sort_ascending ? isLessThan : !isLessThan;
+        });
+      }
     }
 
     if (!allowedNodes.empty() || parentKey == nullptr) {
@@ -252,7 +281,7 @@ struct SortFilterProxyModel::Impl {
 inline SortFilterProxyModel::SortFilterProxyModel()
     : m_impl(std::make_unique<Impl>()) {}
 
-inline SortFilterProxyModel::~SortFilterProxyModel() {}
+inline SortFilterProxyModel::~SortFilterProxyModel() = default;
 
 inline void SortFilterProxyModel::setFilterCallback(FilterCallback callback) {
   beginResetModel();
@@ -261,12 +290,21 @@ inline void SortFilterProxyModel::setFilterCallback(FilterCallback callback) {
   endResetModel();
 }
 
-inline void SortFilterProxyModel::sort(int column, bool ascending) {
+inline void SortFilterProxyModel::setSortCallback(LessThanCallback callback) {
   beginResetModel();
-  m_impl->sort_column = column;
-  m_impl->sort_ascending = ascending;
+  m_impl->sort_callback_ = std::move(callback);
   invalidate();
   endResetModel();
+}
+
+inline void SortFilterProxyModel::sort(int column, bool ascending) {
+  if (column != m_impl->sort_column || m_impl->sort_ascending != ascending) {
+    beginResetModel();
+    m_impl->sort_column = column;
+    m_impl->sort_ascending = ascending;
+    invalidate();
+    endResetModel();
+  }
 }
 
 inline void SortFilterProxyModel::invalidate() {
