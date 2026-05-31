@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
     clang-format \
     clang-tidy \
     valgrind \
+    ccache \
+    libssl-dev \
+    libsqlite3-dev \
+    libboost-all-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set default working directory path inside container filesystem
