@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libsqlite3-dev \
     libboost-all-dev \
+    g++ \
+    g++-16 \
+    cmake-format \
     && rm -rf /var/lib/apt/lists/*
 
 # Set default working directory path inside container filesystem
