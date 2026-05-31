@@ -21,6 +21,7 @@ add_executable(unit_tests
         unicode_scaler_test.cpp
         test_any_to_string.cpp
         concat_proxy_model_test.cpp
+        view_coordinate_mapper_test.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE
