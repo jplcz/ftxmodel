@@ -255,6 +255,8 @@ int main() {
   treeView.setItemDelegate(treeRouter);
   treeView.setModel(configModel);
   treeView.setShowHorizontalHeaders(true);
+  treeView.highlightStyle()->setSelectionBehavior(
+      SelectionBehavior::SelectRows);
 
   // ========================================================================
   // INTERACTION LAYER (Focus Navigation Controller Logic)

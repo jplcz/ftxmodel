@@ -338,6 +338,13 @@ class AbstractGridLikeItemView : public AbstractItemView {
   [[nodiscard]] SelectionHighlightStyle* highlightStyle() const noexcept {
     return highlight_style_.get();
   }
+
+  void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
+    AbstractItemView::setModel(model);
+    if (model && !selectionModel()->currentIndex().isValid()) {
+      selectionModel()->setCurrentIndex(model->index(0, 0));
+    }
+  }
 };
 
 }  // namespace ftxmodel

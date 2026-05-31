@@ -115,12 +115,21 @@ class ScrollableTableView : public AbstractGridLikeItemView {
 
           // Compute state flags dynamically
           ViewStateFlags state = ViewNormal;
+
           if (current_focus.isValid() && current_focus.row() == r &&
               current_focus.column() == c) {
             state |= ViewSelected;
           }
+
           if (is_currently_focused) {
             state |= ViewFocused;
+          }
+
+          if (current_focus.isValid() && current_focus.row() == r) {
+            state |= ViewIsSameRow;
+            if (current_focus.column() == c) {
+              state |= ViewIsExactCell;
+            }
           }
 
           // Apply selection style decorator if available
