@@ -15,8 +15,8 @@ jobs:
       image: gitea.kimbap.pl/docker-images/ftxmodel-ci:latest
 
     env:
-      CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
-      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CPM_SOURCE_CACHE: /root/.cache/cpm
+      CCACHE_DIR: /root/.cache/ccache
 
     strategy:
       fail-fast: false # Don't cancel other matrix jobs if one compiler fails
