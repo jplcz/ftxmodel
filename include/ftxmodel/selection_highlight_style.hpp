@@ -28,15 +28,49 @@ class SelectionHighlightStyle {
  private:
   SelectionBehavior m_behavior = SelectionBehavior::SelectCells;
 
+  // Modifiers for the exact active cell (or full row if SelectRows is on)
+  ftxui::Decorator m_active_focus_decorator =
+      ftxui::bgcolor(ftxui::Color::BlueLight) |
+      ftxui::color(ftxui::Color::Black) | ftxui::bold;
+
+  // Modifiers for secondary row cells (only applied in SelectRows behavior
+  // mode)
+  ftxui::Decorator m_row_track_decorator =
+      ftxui::bgcolor(ftxui::Color::DarkBlue) |
+      ftxui::color(ftxui::Color::White);
+
+  // Modifiers applied when the table selection is visible but the component is
+  // out of focus
+  ftxui::Decorator m_blurred_decorator = ftxui::bgcolor(ftxui::Color::GrayDark);
+
  public:
   virtual ~SelectionHighlightStyle() = default;
 
-  void setSelectionBehavior(const SelectionBehavior behavior) noexcept {
+  SelectionHighlightStyle& setSelectionBehavior(
+      const SelectionBehavior behavior) noexcept {
     m_behavior = behavior;
+    return *this;
   }
 
   [[nodiscard]] SelectionBehavior selectionBehavior() const noexcept {
     return m_behavior;
+  }
+  // =========================================================================
+  // --- Fluent Runtime Customization API ---
+  // =========================================================================
+  SelectionHighlightStyle& setActiveFocusStyle(ftxui::Decorator decorator) {
+    m_active_focus_decorator = std::move(decorator);
+    return *this;
+  }
+
+  SelectionHighlightStyle& setRowTrackStyle(ftxui::Decorator decorator) {
+    m_row_track_decorator = std::move(decorator);
+    return *this;
+  }
+
+  SelectionHighlightStyle& setBlurredStyle(ftxui::Decorator decorator) {
+    m_blurred_decorator = std::move(decorator);
+    return *this;
   }
 
   /**
@@ -65,17 +99,15 @@ class SelectionHighlightStyle {
       // that line.
       if (m_behavior == SelectionBehavior::SelectRows &&
           !(state & ViewIsExactCell)) {
-        return std::move(content) | ftxui::bgcolor(ftxui::Color::DarkBlue) |
-               ftxui::color(ftxui::Color::White);
+        return std::move(content) | m_row_track_decorator;
       }
 
       // Precision focus highlight style rule cross-over block
-      return std::move(content) | ftxui::bgcolor(ftxui::Color::BlueLight) |
-             ftxui::color(ftxui::Color::Black) | ftxui::bold;
+      return std::move(content) | m_active_focus_decorator;
     } else if (state & ViewSelected) {
       // Row selection fallback tracking theme when component focus is blurred
       // out
-      return std::move(content) | ftxui::bgcolor(ftxui::Color::GrayDark);
+      return std::move(content) | m_blurred_decorator;
     }
 
     return content;

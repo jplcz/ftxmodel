@@ -122,8 +122,9 @@ int main() {
   // bounds.
   table_view->setViewportDimensions(5, 4);
   table_view->setShowHorizontalHeaders(true);
-  table_view->highlightStyle()->setSelectionBehavior(
-      SelectionBehavior::SelectRows);
+  table_view->highlightStyle()
+      ->setSelectionBehavior(SelectionBehavior::SelectRows)
+      .setActiveFocusStyle(ftxui::underlined | color(Color::Cyan) | bold);
 
   auto dashboard_renderer = Renderer(table_view, [&] {
     return vbox(
