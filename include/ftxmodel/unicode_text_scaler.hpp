@@ -1,6 +1,7 @@
 // ReSharper disable CppTooWideScopeInitStatement
 #pragma once
 #include <algorithm>
+#include <cstdint>
 #include <ftxui/screen/string.hpp>
 #include <ftxui/screen/terminal.hpp>
 #include <span>
@@ -98,19 +99,19 @@ class UnicodeTextScaler {
     const auto byte1 = static_cast<uint8_t>(remaining_text[0]);
 
     // 1-Byte Character: Standard ASCII (0xxxxxxx)
-    if (byte1 < 0x80) {
-      out_code_point = byte1;
+    if (byte1 < 0x80U) {
+      out_code_point = static_cast<char32_t>(byte1);
       return 1;
     }
 
     // 2-Byte Character (110xxxxx 10xxxxxx)
-    if ((byte1 & 0xE0) == 0xC0) {
+    if ((byte1 & 0xE0U) == 0xC0U) {
       if (available_bytes < 2) {
         return 0;
       }
 
       const auto byte2 = static_cast<uint8_t>(remaining_text[1]);
-      if ((byte2 & 0xC0) != 0x80) {
+      if ((byte2 & 0xC0U) != 0x80U) {
         return 0;  // Invalid continuation byte
       }
 
@@ -120,14 +121,14 @@ class UnicodeTextScaler {
     }
 
     // 3-Byte Character (1110xxxx 10xxxxxx 10xxxxxx)
-    if ((byte1 & 0xF0) == 0xE0) {
+    if ((byte1 & 0xF0U) == 0xE0U) {
       if (available_bytes < 3) {
         return 0;
       }
 
       const auto byte2 = static_cast<uint8_t>(remaining_text[1]);
       const auto byte3 = static_cast<uint8_t>(remaining_text[2]);
-      if ((byte2 & 0xC0) != 0x80 || (byte3 & 0xC0) != 0x80) {
+      if ((byte2 & 0xC0U) != 0x80U || (byte3 & 0xC0U) != 0x80U) {
         return 0;
       }
 
@@ -138,7 +139,7 @@ class UnicodeTextScaler {
     }
 
     // 4-Byte Character (11110xxx 10xxxxxx 10xxxxxx 10xxxxxx)
-    if ((byte1 & 0xF8) == 0xF0) {
+    if ((byte1 & 0xF8U) == 0xF0U) {
       if (available_bytes < 4) {
         return 0;
       }
@@ -146,8 +147,8 @@ class UnicodeTextScaler {
       const auto byte2 = static_cast<uint8_t>(remaining_text[1]);
       const auto byte3 = static_cast<uint8_t>(remaining_text[2]);
       const auto byte4 = static_cast<uint8_t>(remaining_text[3]);
-      if ((byte2 & 0xC0) != 0x80 || (byte3 & 0xC0) != 0x80 ||
-          (byte4 & 0xC0) != 0x80) {
+      if ((byte2 & 0xC0U) != 0x80U || (byte3 & 0xC0U) != 0x80U ||
+          (byte4 & 0xC0U) != 0x80U) {
         return 0;
       }
 
