@@ -29,3 +29,14 @@ if(SQLite3_FOUND)
 else()
     message(WARNING "SQLite3 was requested for examples but could not be located on the system.")
 endif()
+
+CPMAddPackage(
+        NAME nlohmann_json
+        GITHUB_REPOSITORY nlohmann/json
+        VERSION 3.12.0
+        OPTIONS
+        "JSON_BuildTests OFF" # Skip building up internal JSON framework unit tests
+)
+
+AddExample(json_property_tree.cpp)
+target_link_libraries(json_property_tree PRIVATE nlohmann_json::nlohmann_json)
