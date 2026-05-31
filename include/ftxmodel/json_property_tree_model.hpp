@@ -66,14 +66,14 @@ struct JsonPropertyNode {
       for (auto it = element->begin(); it != element->end(); ++it) {
         auto child = buildTree(&it.value(), it.key(), node.get());
         child->row_in_parent = current_row++;
-        node->children.push_back(std::move(child));
+        node->children.emplace_back(std::move(child));
       }
     } else if (element->is_array()) {
       for (auto it = element->begin(); it != element->end(); ++it) {
         auto child = buildTree(
             &it.value(), "[" + std::to_string(current_row) + "]", node.get());
         child->row_in_parent = current_row++;
-        node->children.push_back(std::move(child));
+        node->children.emplace_back(std::move(child));
       }
     }
 
