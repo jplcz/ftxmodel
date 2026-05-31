@@ -9,6 +9,10 @@ filtering, and presentation of tabular or structured data within FTXUI terminal 
 It aims to decouple data handling from the UI layer, making it easier to build 
 robust and reactive terminal user interfaces.
 
+## Documentation
+
+*   **[Core Architecture: Models and Indices](docs/architecture.md)**: An overview of how `AbstractItemModel` and `ModelIndex` work together to power the Model-View system.
+
 ## Features
 
 - **Generic Data Models**: Define flexible data structures using standard C++ types (e.g., `std::any`, `std::vector`, `std::string`).
@@ -62,7 +66,3 @@ To use `ftxmodel::JsonPropertyTreeModel`, your application target must link agai
 # Example linking requirement
 target_link_libraries(your_target_name PRIVATE nlohmann_json::nlohmann_json)
 ```
-
-## Getting Started
-
-*(Add basic usage instructions or link to examples here)*
