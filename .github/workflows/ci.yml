@@ -14,6 +14,10 @@ jobs:
     container:
       image: gitea.kimbap.pl/docker-images/ftxmodel-ci:latest
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+
     strategy:
       fail-fast: false # Don't cancel other matrix jobs if one compiler fails
       matrix:
@@ -30,6 +34,17 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Cache CPM & ccache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.CPM_SOURCE_CACHE }}
+            ${{ env.CCACHE_DIR }}
+          key: ${{ runner.os }}-cpp-${{ hashFiles('**/CMakeLists.txt') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-cpp-${{ hashFiles('**/CMakeLists.txt') }}-
+            ${{ runner.os }}-cpp-
+
       - name: Configure CMake Build Target Tree
         env:
           CXX: ${{ matrix.compiler }}
@@ -39,7 +54,9 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DFTXMODEL_ENABLE_INSTALL=ON \
             -DFTXMODEL_ENABLE_TESTING=ON \
-            -DFTXMODEL_ENABLE_APPS=ON
+            -DFTXMODEL_ENABLE_APPS=ON \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       # Compile the source library tree and test harness executable
       - name: Compile Target Artifacts
