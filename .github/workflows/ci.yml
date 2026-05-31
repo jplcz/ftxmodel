@@ -34,17 +34,6 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Cache CPM & ccache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.CPM_SOURCE_CACHE }}
-            ${{ env.CCACHE_DIR }}
-          key: ${{ runner.os }}-cpp-${{ hashFiles('**/CMakeLists.txt') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-cpp-${{ hashFiles('**/CMakeLists.txt') }}-
-            ${{ runner.os }}-cpp-
-
       - name: Configure CMake Build Target Tree
         env:
           CXX: ${{ matrix.compiler }}
