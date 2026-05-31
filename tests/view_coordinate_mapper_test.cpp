@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <ftxmodel/view_coordinate_mapper_test.hpp>
 #include <ftxmodel/abstract_item_model.hpp>
+#include <ftxmodel/view_coordinate_mapper.hpp>
 
 using namespace ftxmodel;
 

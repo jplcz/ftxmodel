@@ -239,6 +239,42 @@ class SqliteQueryModel : public AbstractItemModel {
       return std::to_string(section + 1);
     }
   }
+
+  ModelIndex findIndexById(
+      const UniqueNodeId& targetId,
+      const ModelIndex& parent = ModelIndex()) const override {
+    // Database tables are strictly flat root layouts; bypass if a nested parent
+    // is passed
+    if (parent.isValid() || targetId == UniqueNodeId{nullptr}) {
+      return {};
+    }
+
+    const int rows = rowCount();
+    const int cols = columnCount();
+
+    // Scan through our flat row cache blocks
+    for (int r = 0; r < rows; ++r) {
+      // Evaluate row-level or cell-level unique ID match conditions.
+      // We check column 0 as the primary record row key identifier.
+      const ModelIndex primaryRowIdx = index(r, 0);
+
+      if (uniqueId(primaryRowIdx) == targetId) {
+        // Match hit! Return column 0 for this record entry row
+        return primaryRowIdx;
+      }
+
+      if (m_id_mode == IdentityMode::IndividualCell) {
+        for (int c = 1; c < cols; ++c) {
+          ModelIndex cellIdx = index(r, c);
+          if (uniqueId(cellIdx) == targetId) {
+            return cellIdx;  // Return precision cell coordinate match
+          }
+        }
+      }
+    }
+
+    return {};  // No structural match found across cache segments
+  }
 };
 
 }  // namespace ftxmodel

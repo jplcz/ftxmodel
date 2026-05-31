@@ -235,7 +235,7 @@ int main() {
   TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   tableView.setItemDelegate(tableRouter);
   tableView.setModel(metricsModel);
-  tableView.setShowHeaders(true);
+  tableView.setShowHorizontalHeaders(true);
 
   // ========================================================================
   // USE CASE 2: Build the Tree Layout using MultiTypeRouterDelegate
@@ -254,7 +254,7 @@ int main() {
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(treeRouter);
   treeView.setModel(configModel);
-  treeView.setShowHeaders(true);
+  treeView.setShowHorizontalHeaders(true);
 
   // ========================================================================
   // INTERACTION LAYER (Focus Navigation Controller Logic)

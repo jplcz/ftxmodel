@@ -28,7 +28,7 @@ class TreeView : public AbstractGridLikeItemView {
     int maxColumnWidth = 0;
 
     // Account for Header text constraints if enabled
-    if (showHeaders()) {
+    if (showHorizontalHeaders()) {
       const std::any hData = model()->headerData(
           colIndex, Orientation::Horizontal, ItemRole::DisplayRole);
 
@@ -214,10 +214,10 @@ class TreeView : public AbstractGridLikeItemView {
     }
 
     // Optional Heterogeneous Header Generation
-    if (showHeaders()) {
+    if (showHorizontalHeaders()) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
-        headerRow.emplace_back(headerDelegate()->createHeaderWidget(
+        headerRow.emplace_back(horizontalHeaderDelegate()->createHeaderWidget(
                                    c, Orientation::Horizontal, model()) |
                                ftxui::size(ftxui::WIDTH, ftxui::GREATER_THAN,
                                            colWidths[(size_t)c] - 1));

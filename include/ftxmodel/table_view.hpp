@@ -22,7 +22,7 @@ class TableView : public AbstractGridLikeItemView {
     int totalRows = model()->rowCount();
 
     // Check the header's size requirements first if headers are turned on
-    if (showHeaders()) {
+    if (showHorizontalHeaders()) {
       const std::any hData = model()->headerData(
           colIndex, Orientation::Horizontal, ItemRole::DisplayRole);
       std::string header_text = AnyToStringTranslator::Translate(hData);
@@ -152,10 +152,10 @@ class TableView : public AbstractGridLikeItemView {
     }
 
     // Optional Horizontal Headers Pass
-    if (showHeaders()) {
+    if (showHorizontalHeaders()) {
       std::vector<ftxui::Element> headerRow;
       for (int c = 0; c < totalCols; ++c) {
-        ftxui::Element hWidget = headerDelegate()->createHeaderWidget(
+        ftxui::Element hWidget = horizontalHeaderDelegate()->createHeaderWidget(
             c, Orientation::Horizontal, model());
 
         // Enforce calculated uniform column constraint limits!

@@ -23,6 +23,9 @@ if(SQLite3_FOUND)
 
     AddExample(sqlite_example_app.cpp)
     target_link_libraries(sqlite_example_app PRIVATE SQLite::SQLite3)
+
+    AddExample(scrollable_table_view_app.cpp)
+    target_link_libraries(scrollable_table_view_app PRIVATE SQLite::SQLite3)
 else()
     message(WARNING "SQLite3 was requested for examples but could not be located on the system.")
 endif()

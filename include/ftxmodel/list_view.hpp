@@ -90,10 +90,11 @@ class ListView : public AbstractGridLikeItemView {
 
     std::vector<ftxui::Element> renderedRows;
 
-    if (showHeaders()) {
+    if (showHorizontalHeaders()) {
       // Pulls directly from the base class via headerDelegate()
-      ftxui::Element headerWidget = headerDelegate()->createHeaderWidget(
-          0, Orientation::Horizontal, model());
+      ftxui::Element headerWidget =
+          horizontalHeaderDelegate()->createHeaderWidget(
+              0, Orientation::Horizontal, model());
       renderedRows.push_back(
           headerWidget | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth));
       renderedRows.push_back(ftxui::separator());

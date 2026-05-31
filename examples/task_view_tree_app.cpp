@@ -275,7 +275,7 @@ int main() {
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(delegate);
   treeView.setModel(model);
-  treeView.setShowHeaders(true);
+  treeView.setShowHorizontalHeaders(true);
 
   // Bind Keyboard Events to full spatial navigation loops
   auto baseComponent = ftxui::Make<ftxui::ComponentBase>();

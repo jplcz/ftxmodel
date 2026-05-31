@@ -6,6 +6,7 @@
 #include "header_delegate.hpp"
 #include "item_delegate.hpp"
 #include "item_selection_model.hpp"
+#include "selection_highlight_style.hpp"
 
 namespace ftxmodel {
 
@@ -265,27 +266,78 @@ class AbstractItemView : public ftxui::ComponentBase, public sigslot::observer {
 
 class AbstractGridLikeItemView : public AbstractItemView {
  private:
-  std::shared_ptr<HeaderDelegate> header_delegate_ =
+  // Separate delegate tracks for fine-grained axis styling
+  std::shared_ptr<HeaderDelegate> horizontal_header_delegate_ =
       std::make_shared<AdvancedHeaderDelegate>();
-  bool show_headers_ = true;
+  std::shared_ptr<HeaderDelegate> vertical_header_delegate_ =
+      std::make_shared<AdvancedHeaderDelegate>();
+  std::shared_ptr<SelectionHighlightStyle> highlight_style_ =
+      std::make_shared<SelectionHighlightStyle>();  // Default fallbacks
+
+  // Independent visibility control switches
+  bool show_horizontal_headers_ = false;
+  bool show_vertical_headers_ = false;
 
  public:
   AbstractGridLikeItemView() = default;
   ~AbstractGridLikeItemView() override = default;
 
-  // --- Header Management ---
-  void setHeaderDelegate(const std::shared_ptr<HeaderDelegate>& delegate) {
+  // =========================================================================
+  // --- Horizontal Header Management (Columns) ---
+  // =========================================================================
+  void setHorizontalHeaderDelegate(
+      const std::shared_ptr<HeaderDelegate>& delegate) {
     if (delegate) {
-      header_delegate_ = delegate;
+      horizontal_header_delegate_ = delegate;
     }
   }
 
-  [[nodiscard]] HeaderDelegate* headerDelegate() const {
-    return header_delegate_.get();
+  [[nodiscard]] HeaderDelegate* horizontalHeaderDelegate() const {
+    return horizontal_header_delegate_.get();
   }
 
-  void setShowHeaders(const bool show) { show_headers_ = show; }
-  [[nodiscard]] bool showHeaders() const { return show_headers_; }
+  void setShowHorizontalHeaders(const bool show) {
+    show_horizontal_headers_ = show;
+  }
+  [[nodiscard]] bool showHorizontalHeaders() const {
+    return show_horizontal_headers_;
+  }
+
+  // =========================================================================
+  // --- Vertical Header Management (Rows) ---
+  // =========================================================================
+  void setVerticalHeaderDelegate(
+      const std::shared_ptr<HeaderDelegate>& delegate) {
+    if (delegate) {
+      vertical_header_delegate_ = delegate;
+    }
+  }
+
+  [[nodiscard]] HeaderDelegate* verticalHeaderDelegate() const {
+    return vertical_header_delegate_.get();
+  }
+
+  void setShowVerticalHeaders(const bool show) {
+    show_vertical_headers_ = show;
+  }
+
+  [[nodiscard]] bool showVerticalHeaders() const {
+    return show_vertical_headers_;
+  }
+
+  // =========================================================================
+  // --- Selection Highlight ---
+  // =========================================================================
+
+  void setHighlightStyle(std::shared_ptr<SelectionHighlightStyle> style) {
+    if (style) {
+      highlight_style_ = std::move(style);
+    }
+  }
+
+  [[nodiscard]] SelectionHighlightStyle* highlightStyle() const noexcept {
+    return highlight_style_.get();
+  }
 };
 
 }  // namespace ftxmodel

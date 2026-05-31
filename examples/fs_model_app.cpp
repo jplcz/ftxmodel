@@ -18,7 +18,7 @@ int main() {
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
   treeView.setItemDelegate(fsDelegate);
   treeView.setModel(fsModel);
-  treeView.setShowHeaders(true);
+  treeView.setShowHorizontalHeaders(true);
 
   auto baseComp = ftxui::Make<ftxui::ComponentBase>();
   auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {
