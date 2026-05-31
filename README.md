@@ -12,6 +12,7 @@ robust and reactive terminal user interfaces.
 ## Documentation
 
 *   **[Core Architecture: Models and Indices](docs/architecture.md)**: An overview of how `AbstractItemModel` and `ModelIndex` work together to power the Model-View system.
+*   **[Core Architecture: Views, Selection, and Delegates](docs/view_architecture.md)**: An overview of the presentation layer, explaining how Views render data, track selection, and apply visual styles using Delegates.
 
 ## Features
 
