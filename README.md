@@ -1,5 +1,7 @@
 # ftxmodel
 
+> **⚠️ Warning:** This library is currently a **Work In Progress**. Features are incomplete, and some public interfaces and internal architectures are subject to breaking changes without prior notice.
+
 Abstract data model library for [FTXUI](https://github.com/ArthurSonzogni/FTXUI).
 
 This library provides a generic data model abstraction to simplify the management, 
