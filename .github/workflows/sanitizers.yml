@@ -6,6 +6,9 @@ on:
     branches: [ master ]
   workflow_dispatch: # Allows manual pipeline triggering from the UI
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
