@@ -214,3 +214,22 @@ struct UniqueNodeIdEqual {
 };
 
 }  // namespace ftxmodel
+
+template <>
+struct std::hash<ftxmodel::ModelIndex> {
+  std::size_t operator()(const ftxmodel::ModelIndex& index) const noexcept {
+    if (!index.isValid()) {
+      return 0;
+    }
+
+    const std::size_t h1 = std::hash<int>{}(index.row());
+    const std::size_t h2 = std::hash<int>{}(index.column());
+    const std::size_t h3 = std::hash<const void*>{}(index.internalPointer());
+
+    std::size_t seed = h1;
+    seed ^= h2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= h3 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+
+    return seed;
+  }
+};
