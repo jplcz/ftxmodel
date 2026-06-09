@@ -35,8 +35,7 @@ CPMAddPackage(
         "FTXUI_BUILD_TESTS OFF"
 )
 
-add_library(ftxmodel INTERFACE
-        include/ftxmodel/scrollable_table_view.hpp)
+add_library(ftxmodel INTERFACE)
 add_library(ftxmodel::ftxmodel ALIAS ftxmodel)
 target_compile_features(ftxmodel INTERFACE cxx_std_20)
 

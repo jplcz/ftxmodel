@@ -10,6 +10,7 @@
 #include <ftxmodel/item_delegate.hpp>
 #include <ftxmodel/item_selection_model.hpp>
 #include <ftxmodel/list_view.hpp>
+#include <ftxmodel/proxy_item_delegate.hpp>
 #include <ftxmodel/scrollable_tree_view.hpp>
 #include <ftxmodel/sort_filter_proxy_model.hpp>
 #include <ftxmodel/standard_item_model.hpp>

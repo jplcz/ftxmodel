@@ -1,5 +1,7 @@
 #include <ftxmodel/tree_view.hpp>
 
+#include "ftxmodel/proxy_item_delegate.hpp"
+#include "ftxmodel/sort_filter_proxy_model.hpp"
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
@@ -39,6 +41,10 @@ class FileTreeModel : public AbstractItemModel {
         std::make_unique<FileNode>("main.cpp", false, src.get()));
     src->children.push_back(
         std::make_unique<FileNode>("utils.hpp", false, src.get()));
+    src->children.push_back(
+        std::make_unique<FileNode>("aaa.hpp", false, src.get()));
+    src->children.push_back(
+        std::make_unique<FileNode>("v1.hpp", false, src.get()));
 
     auto docs = std::make_unique<FileNode>("docs", true, root_.get());
     docs->children.push_back(
@@ -103,12 +109,17 @@ int main() {
   auto screen = ftxui::ScreenInteractive::TerminalOutput();
 
   auto model = std::make_shared<FileTreeModel>();
+
+  auto proxy = std::make_shared<SortFilterProxyModel>();
+  proxy->setSourceModel(model);
+  proxy->sort(0, false);
+
   auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
                                                        ftxui::Color::Yellow);
 
   TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
-  treeView.setItemDelegate(delegate);
-  treeView.setModel(model);
+  treeView.setItemDelegate(std::make_shared<ProxyItemDelegate>(delegate));
+  treeView.setModel(proxy);
 
   auto baseComp = ftxui::Make<ftxui::ComponentBase>();
   auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {
