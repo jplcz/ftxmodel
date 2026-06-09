@@ -9,10 +9,12 @@
 namespace ftxmodel {
 
 //! Helper callback which tells whether row or column is visible
-using SortProxyModelFilter = std::function<bool(ModelIndex)>;
+using SortProxyModelFilter =
+    std::function<bool(int source_cell, ModelIndex source_parent)>;
 
 //! Helper which compares two ModelIndex values
-using SortProxyModelLessThan = std::function<bool(ModelIndex, ModelIndex)>;
+using SortProxyModelLessThan =
+    std::function<bool(ModelIndex source_lhs, ModelIndex source_rhs)>;
 
 namespace detail {
 
@@ -83,19 +85,29 @@ struct SortFilterProxyModelImpl {
     }
   };
 
-  void rebuildParent(const AbstractProxyModel* model,
-                     const ModelIndex& sourceParent);
+  using mapping_hash = std::unordered_map<InternalIndex,
+                                          std::unique_ptr<Mapping>,
+                                          InternalIndexHasher>;
+
+  Mapping* rebuildParent(const AbstractProxyModel* model,
+                         const ModelIndex& sourceParent);
+
+  bool filterAcceptsRow(int source_row, const ModelIndex& source_parent) const;
+  bool filterAcceptsColumn(int source_col,
+                           const ModelIndex& source_parent) const;
+
+  bool filterAcceptsRowRecursive(int source_row,
+                                 const ModelIndex& source_parent,
+                                 const AbstractItemModel* sourceModel) const;
 
   /**
    * @brief The master structural cache mapping a source parent node to its
    * visual mapping frames.
    */
-  std::unordered_map<InternalIndex,
-                     std::unique_ptr<Mapping>,
-                     InternalIndexHasher>
-      mappings;
+  mapping_hash mappings;
 
-  SortProxyModelFilter filter;
+  SortProxyModelFilter rowFilter;
+  SortProxyModelFilter columnFilter;
   SortProxyModelLessThan lessThan;
   bool ascending = true;
   int sort_column = -1;
@@ -110,7 +122,8 @@ class SortFilterProxyModel : public AbstractProxyModel {
 
   ~SortFilterProxyModel() override = default;
 
-  void setFilterCallback(SortProxyModelFilter filter);
+  void setRowFilterCallback(SortProxyModelFilter filter);
+  void setColumnFilterCallback(SortProxyModelFilter filter);
   void sort(int column, bool ascending = true);
   void setSortCallback(SortProxyModelLessThan lessThan);
 
@@ -131,10 +144,19 @@ class SortFilterProxyModel : public AbstractProxyModel {
   std::unique_ptr<detail::SortFilterProxyModelImpl> impl;
 };
 
-inline void detail::SortFilterProxyModelImpl::rebuildParent(
+inline detail::SortFilterProxyModelImpl::Mapping*
+detail::SortFilterProxyModelImpl::rebuildParent(
     const AbstractProxyModel* model,
     const ModelIndex& sourceParent) {
-  assert(!sourceParent.isValid() || sourceParent.model() == model);
+  assert(!sourceParent.isValid() ||
+         sourceParent.model() == model->sourceModel());
+
+  // Create node if needed
+  auto node_it = mappings.find(sourceParent);
+  if (node_it != mappings.end()) {
+    return node_it->second.get();
+  }
+
   // Check if we're done
   const auto sourceModel = model->sourceModel();
   assert(sourceModel != nullptr);
@@ -142,53 +164,42 @@ inline void detail::SortFilterProxyModelImpl::rebuildParent(
   const int sourceRows = sourceModel->rowCount(sourceParent);
   const int sourceColumns = sourceModel->columnCount(sourceParent);
 
-  if (sourceRows <= 0 || sourceColumns <= 0) {
-    return;
-  }
-
   // Create node if needed
-  auto node_it = mappings.find(sourceParent);
-  if (node_it == mappings.end()) {
-    auto node = std::make_unique<Mapping>();
-    node->sourceParent = sourceParent;
-    node_it =
-        mappings.emplace(InternalIndex(sourceParent), std::move(node)).first;
-  }
+  auto node = std::make_unique<Mapping>();
+  node->sourceParent = sourceParent;
+  node_it =
+      mappings.emplace(InternalIndex(sourceParent), std::move(node)).first;
 
   auto* proxyNode = node_it->second.get();
 
-  // If there are no children, we're done
-  if (!sourceModel->hasChildren(sourceParent)) {
-    return;
-  }
-
-  // If we're populated, there's nothing to do
-  if (!proxyNode->proxy_row_to_source.empty() &&
-      !proxyNode->proxy_column_to_source.empty()) {
-    return;
-  }
-
-  // Construct column maps first
-  proxyNode->proxy_column_to_source.resize(static_cast<size_t>(sourceColumns));
-  proxyNode->source_column_to_proxy.resize(static_cast<size_t>(sourceColumns));
+  // Build proxy->source column translator
   for (int i = 0; i < sourceColumns; ++i) {
-    proxyNode->proxy_column_to_source[static_cast<size_t>(i)] = i;
-    proxyNode->source_column_to_proxy[static_cast<size_t>(i)] = i;
+    if (filterAcceptsColumn(i, sourceParent)) {
+      proxyNode->proxy_column_to_source.push_back(i);
+    }
   }
-
-  // Construct row map second
-  proxyNode->proxy_row_to_source.resize(static_cast<size_t>(sourceRows));
-  proxyNode->source_row_to_proxy.resize(static_cast<size_t>(sourceRows));
+  // Build source->proxy column translator
+  proxyNode->source_column_to_proxy.resize(static_cast<size_t>(sourceColumns),
+                                           -1);
+  for (size_t i = 0; i < proxyNode->proxy_column_to_source.size(); ++i) {
+    const int column = proxyNode->proxy_column_to_source[i];
+    proxyNode->source_column_to_proxy[static_cast<size_t>(column)] =
+        static_cast<int>(i);
+  }
+  // Build proxy->source row translator
   for (int i = 0; i < sourceRows; ++i) {
-    proxyNode->proxy_row_to_source[static_cast<size_t>(i)] = i;
+    if (filterAcceptsRowRecursive(i, sourceParent, sourceModel)) {
+      proxyNode->proxy_row_to_source.push_back(i);
+    }
   }
+  proxyNode->source_row_to_proxy.resize(static_cast<size_t>(sourceRows), -1);
 
   // Apply row sort if needed
   if (sort_column >= 0 &&
       sort_column <
           static_cast<int>(proxyNode->proxy_column_to_source.size())) {
     const int sourceColumn =
-        proxyNode->proxy_column_to_source[(size_t)sort_column];
+        proxyNode->proxy_column_to_source[static_cast<size_t>(sort_column)];
 
     auto compareSource = [&](const ModelIndex& lhs, const ModelIndex& rhs) {
       if (lessThan) {
@@ -226,13 +237,61 @@ inline void detail::SortFilterProxyModelImpl::rebuildParent(
     proxyNode->source_row_to_proxy[static_cast<size_t>(source_index)] =
         static_cast<int>(i);
   }
+
+  return proxyNode;
 }
 
-inline void SortFilterProxyModel::setFilterCallback(
+inline bool detail::SortFilterProxyModelImpl::filterAcceptsRow(
+    int source_row,
+    const ModelIndex& source_parent) const {
+  if (!rowFilter) {
+    return true;
+  }
+  return rowFilter(source_row, source_parent);
+}
+
+inline bool detail::SortFilterProxyModelImpl::filterAcceptsColumn(
+    int source_col,
+    const ModelIndex& source_parent) const {
+  if (!columnFilter) {
+    return true;
+  }
+  return columnFilter(source_col, source_parent);
+}
+
+inline bool detail::SortFilterProxyModelImpl::filterAcceptsRowRecursive(
+    int source_row,
+    const ModelIndex& source_parent,
+    const AbstractItemModel* sourceModel) const {
+  if (filterAcceptsRow(source_row, source_parent)) {
+    return true;
+  }
+
+  const auto this_child = sourceModel->index(source_row, 0, source_parent);
+  const int child_rows = sourceModel->rowCount(this_child);
+
+  for (int i = 0; i < child_rows; ++i) {
+    if (filterAcceptsRowRecursive(i, this_child, sourceModel)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+inline void SortFilterProxyModel::setRowFilterCallback(
     SortProxyModelFilter filter) {
   beginResetModel();
   invalidate();
-  impl->filter = std::move(filter);
+  impl->rowFilter = std::move(filter);
+  endResetModel();
+}
+
+inline void SortFilterProxyModel::setColumnFilterCallback(
+    SortProxyModelFilter filter) {
+  beginResetModel();
+  invalidate();
+  impl->columnFilter = std::move(filter);
   endResetModel();
 }
 
@@ -316,36 +375,33 @@ inline ModelIndex SortFilterProxyModel::mapToSource(
       child.internalPointer());
   assert(mapping != nullptr);
 
-  // Make sure child mappings exist
-  impl->rebuildParent(this, mapping->sourceParent);
-
   if (child.row() >= static_cast<int>(mapping->proxy_row_to_source.size())) {
     return {};
   }
+
   if (child.column() >=
       static_cast<int>(mapping->proxy_column_to_source.size())) {
     return {};
   }
+
+  const int sourceRow =
+      mapping->proxy_row_to_source[static_cast<size_t>(child.row())];
+  const int sourceColumn =
+      mapping->proxy_column_to_source[static_cast<size_t>(child.column())];
+
   // Translate index in proxy coordinates to source coordinates
-  return sourceModel()->index(
-      mapping->proxy_row_to_source[static_cast<size_t>(child.row())],
-      mapping->proxy_column_to_source[static_cast<size_t>(child.column())],
-      mapping->sourceParent);
+  return sourceModel()->index(sourceRow, sourceColumn, mapping->sourceParent);
 }
 
-inline ModelIndex SortFilterProxyModel::index(int row,
-                                              int column,
+inline ModelIndex SortFilterProxyModel::index(const int row,
+                                              const int column,
                                               const ModelIndex& parent) const {
   if (row < 0 || column < 0 || !sourceModel()) {
     return {};
   }
   assert(!parent.isValid() || parent.model() == this);
   const auto sourceParent = mapToSource(parent);
-  const auto it = impl->mappings.find(sourceParent);
-  if (it == impl->mappings.end()) {
-    return {};
-  }
-  auto* proxyMapping = it->second.get();
+  const auto proxyMapping = impl->rebuildParent(this, sourceParent);
   if (row >= static_cast<int>(proxyMapping->proxy_row_to_source.size())) {
     return {};
   }
@@ -365,34 +421,41 @@ inline ModelIndex SortFilterProxyModel::parent(const ModelIndex& child) const {
     return {};
   }
   const auto sourceParent = sourceModel()->parent(sourceChild);
-  return mapFromSource(sourceParent);
+  const auto proxyParent = mapFromSource(sourceParent);
+
+  return proxyParent;
 }
 
 inline int SortFilterProxyModel::rowCount(const ModelIndex& parent) const {
   const auto sourceParent = mapToSource(parent);
-  const auto it = impl->mappings.find(sourceParent);
-  if (it == impl->mappings.end()) {
+  if (!sourceParent.isValid() && parent.isValid()) {
     return 0;
   }
-  return static_cast<int>(it->second->proxy_row_to_source.size());
+  const auto proxyNode = impl->rebuildParent(this, sourceParent);
+  return static_cast<int>(proxyNode->proxy_row_to_source.size());
 }
 
 inline int SortFilterProxyModel::columnCount(const ModelIndex& parent) const {
   const auto sourceParent = mapToSource(parent);
-  const auto it = impl->mappings.find(sourceParent);
-  if (it == impl->mappings.end()) {
+  if (!sourceParent.isValid() && parent.isValid()) {
     return 0;
   }
-  return static_cast<int>(it->second->proxy_column_to_source.size());
+  const auto proxyNode = impl->rebuildParent(this, sourceParent);
+  return static_cast<int>(proxyNode->proxy_column_to_source.size());
 }
 
 inline bool SortFilterProxyModel::hasChildren(const ModelIndex& parent) const {
   const auto sourceParent = mapToSource(parent);
-  const auto it = impl->mappings.find(sourceParent);
-  if (it == impl->mappings.end()) {
+  if (!sourceParent.isValid() && parent.isValid()) {
     return false;
   }
-  const auto* proxyMapping = it->second.get();
+  if (!sourceModel()->hasChildren(sourceParent)) {
+    return false;
+  }
+  if (sourceModel()->canFetchMore(sourceParent)) {
+    return true;
+  }
+  const auto proxyMapping = impl->rebuildParent(this, sourceParent);
   return !proxyMapping->proxy_row_to_source.empty() &&
          !proxyMapping->proxy_column_to_source.empty();
 }

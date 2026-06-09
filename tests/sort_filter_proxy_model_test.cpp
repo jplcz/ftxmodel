@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <ftxmodel/sort_filter_proxy_model.hpp>
 #include <memory>
+#include "ftxmodel/model_debugging.hpp"
 #include "tree_mock_model.hpp"
 
 using namespace ftxmodel;
@@ -30,18 +31,18 @@ TEST_F(SortFilterProxyModelTest, DefaultStateIsPerfectIdentityPassthrough) {
 
 TEST_F(SortFilterProxyModelTest, FilterStripsNonMatchingLeafNodes) {
   // Setup callback to only accept items containing the letter 'A' or 'a'
-  proxy_model->setFilterCallback([&](const ModelIndex& index) -> bool {
-    if (index.column() != 0) {
-      return true;
-    }
-    std::string name = source_model->textData(index);
-    return name.find('A') != std::string::npos ||
-           name.find('a') != std::string::npos;
-  });
+  proxy_model->setRowFilterCallback(
+      [&](const int source_row, const ModelIndex& source_parent) -> bool {
+        const std::string name = source_model->textData(
+            source_model->index(source_row, 0, source_parent));
+        return name.find('A') != std::string::npos ||
+               name.find('a') != std::string::npos;
+      });
 
   // Top level matches: "Fruit" (contains nothing, but has children matching
   // Apple/Banana) "Animal" (contains 'A') -> total = 2 rows
-  EXPECT_EQ(proxy_model->rowCount(ModelIndex()), 2);
+  EXPECT_EQ(proxy_model->rowCount(ModelIndex()), 2)
+      << dumpModelToString(*proxy_model);
 
   // Check Fruit branch content adjustments
   ModelIndex proxy_fruit = proxy_model->index(0, 0, ModelIndex());
@@ -60,12 +61,11 @@ TEST_F(SortFilterProxyModelTest, FilterStripsNonMatchingLeafNodes) {
 
 TEST_F(SortFilterProxyModelTest, HierarchyPruningProtectionKeepsParentsAlive) {
   // Severe target condition: Filter strictly for "Banana"
-  proxy_model->setFilterCallback([&](const ModelIndex& index) -> bool {
-    if (index.column() != 0) {
-      return true;
-    }
-    return source_model->textData(index) == "Banana";
-  });
+  proxy_model->setRowFilterCallback(
+      [&](int source_row, const ModelIndex& source_parent) -> bool {
+        return source_model->textData(source_model->index(
+                   source_row, 0, source_parent)) == "Banana";
+      });
 
   // "Fruit" does NOT match "Banana", but because it contains "Banana" deeply
   // nested, the hasMatchingDescendants pipeline must keep it structurally
