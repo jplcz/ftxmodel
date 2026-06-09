@@ -33,6 +33,19 @@ class ItemDelegate {
 
 class StyledTextDelegate : public ItemDelegate {
  public:
+  // Signature to dynamically mutate cell string data before sizing/formatting
+  // calculations
+  using TextDecorator = std::function<void(std::string& text,
+                                           const ModelIndex& index,
+                                           const AbstractItemModel* model)>;
+
+  // Signature to dynamically wrap or enhance the final ftxui::Element (e.g.
+  // mouse clicks, components, styles)
+  using ElementDecorator =
+      std::function<ftxui::Element(ftxui::Element element,
+                                   const ModelIndex& index,
+                                   const AbstractItemModel* model)>;
+
   StyledTextDelegate(Alignment align = Alignment::Left,
                      ftxui::Color color = ftxui::Color::White,
                      FormattingOptions options = {})
@@ -52,32 +65,63 @@ class StyledTextDelegate : public ItemDelegate {
     options_.alignment = alignment_;  // Maintain flag synchronization
   }
 
+  void addTextDecorator(TextDecorator td) {
+    text_decorators_.emplace_back(std::move(td));
+  }
+
+  void addElementDecorator(ElementDecorator ed) {
+    element_decorators_.emplace_back(std::move(ed));
+  }
+
+  void clearDecorators() noexcept {
+    text_decorators_.clear();
+    element_decorators_.clear();
+  }
+
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
-    std::string processed_text =
-        UnicodeTextScaler::FormatText(model->textData(index), options_);
+    std::string text_buffer = model->textData(index);
 
-    if (processed_text.find('\n') == std::string::npos) {
-      return ftxui::text(std::move(processed_text)) | ftxui::color(text_color_);
+    for (const auto& td : text_decorators_) {
+      td(text_buffer, index, model);
     }
 
-    return ftxui::paragraph(std::move(processed_text)) |
-           ftxui::color(text_color_);
+    std::string processed_text =
+        UnicodeTextScaler::FormatText(text_buffer, options_);
+
+    ftxui::Element base_element;
+
+    if (processed_text.find('\n') == std::string::npos) {
+      base_element =
+          ftxui::text(std::move(processed_text)) | ftxui::color(text_color_);
+    } else {
+      base_element = ftxui::paragraph(std::move(processed_text)) |
+                     ftxui::color(text_color_);
+    }
+
+    for (const auto& ed : element_decorators_) {
+      base_element = ed(std::move(base_element), index, model);
+    }
+
+    return base_element;
   }
 
   // Returns the width matching the string length, defaulting to 1 height block
   ftxui::Dimensions sizeHint(const ModelIndex& index,
                              const AbstractItemModel* model) const override {
-    const auto raw_text = model->textData(index);
+    std::string text_buffer = model->textData(index);
+    for (const auto& td : text_decorators_) {
+      td(text_buffer, index, model);
+    }
 
     // Fast-path evaluation query shortcut
-    if (raw_text.empty()) {
+    if (text_buffer.empty()) {
       return ftxui::Dimensions{std::max(1, options_.min_width),
                                std::max(1, options_.min_height)};
     }
 
     // Measure the raw text footprint shapes
-    const auto text_bounds = UnicodeTextScaler::GetTextBounds(raw_text);
+    const auto text_bounds = UnicodeTextScaler::GetTextBounds(text_buffer);
 
     // Run geometry boundary clipping calculations identical to your pipeline
     // math
@@ -106,6 +150,8 @@ class StyledTextDelegate : public ItemDelegate {
   Alignment alignment_;
   ftxui::Color text_color_;
   FormattingOptions options_;
+  std::vector<TextDecorator> text_decorators_;
+  std::vector<ElementDecorator> element_decorators_;
 };
 
 class CheckBoxDelegate : public ItemDelegate {
