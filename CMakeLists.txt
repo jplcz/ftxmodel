@@ -8,6 +8,7 @@ project(
 option(FTXMODEL_ENABLE_INSTALL "Generate install target" ON)
 option(FTXMODEL_ENABLE_TESTING "Enable building of unit tests" ON)
 option(FTXMODEL_ENABLE_APPS "Enable example apps" ON)
+option(FTXMODEL_FIND_PACKAGES "Find packages via CPM" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -15,25 +16,27 @@ include(CMakeFindDependencyMacro)
 include(cmake/CPM.cmake)
 include(CTest)
 
-find_package(PalSigslot CONFIG QUIET)
-set(SIGSLOT_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-CPMAddPackage(
-        NAME PalSigslot
-        GITHUB_REPOSITORY palacaze/sigslot
-        VERSION 1.2.3
-        OPTIONS "SIGSLOT_ENABLE_INSTALL OFF"
-)
+if (FTXMODEL_FIND_PACKAGES)
+        find_package(PalSigslot CONFIG QUIET)
+        set(SIGSLOT_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+        CPMAddPackage(
+                NAME PalSigslot
+                GITHUB_REPOSITORY palacaze/sigslot
+                VERSION 1.2.3
+                OPTIONS "SIGSLOT_ENABLE_INSTALL OFF"
+        )
 
-set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-CPMAddPackage(
-        NAME ftxui
-        GITHUB_REPOSITORY ArthurSonzogni/FTXUI
-        GIT_TAG main
-        OPTIONS
-        "FTXUI_BUILD_EXAMPLES OFF"
-        "FTXUI_BUILD_TESTS OFF"
-)
+        set(FTXUI_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(FTXUI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        CPMAddPackage(
+                NAME ftxui
+                GITHUB_REPOSITORY ArthurSonzogni/FTXUI
+                GIT_TAG main
+                OPTIONS
+                "FTXUI_BUILD_EXAMPLES OFF"
+                "FTXUI_BUILD_TESTS OFF"
+        )
+endif()
 
 add_library(ftxmodel INTERFACE)
 add_library(ftxmodel::ftxmodel ALIAS ftxmodel)

@@ -20,7 +20,8 @@ enum class ItemRole : int {
   EditRole,
   ToolTipRole,
   CheckedRole,
-  UniqueIdentifierRole
+  UniqueIdentifierRole,
+  UserRole = 1000
 };
 
 /**
