@@ -13,6 +13,7 @@
 #include <ftxmodel/list_view.hpp>
 #include <ftxmodel/proxy_item_delegate.hpp>
 #include <ftxmodel/scrollable_tree_view.hpp>
+#include <ftxmodel/shortcut_action_model.hpp>
 #include <ftxmodel/sort_filter_proxy_model.hpp>
 #include <ftxmodel/standard_item_model.hpp>
 #include <ftxmodel/string_list_model.hpp>

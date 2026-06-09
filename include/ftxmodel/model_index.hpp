@@ -24,6 +24,10 @@ enum class ItemRole : int {
   UserRole = 1000
 };
 
+template <int N>
+constexpr inline auto AsItemRole =
+    static_cast<ItemRole>(static_cast<int>(ItemRole::DisplayRole) + N);
+
 /**
  * @enum ItemFlag
  * @brief Bitwise flags describing user interaction capabilities for a specific
