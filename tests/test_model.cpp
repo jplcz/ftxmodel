@@ -6,6 +6,7 @@
 #include <ftxmodel/concat_proxy_model.hpp>
 #include <ftxmodel/file_system_model.hpp>
 #include <ftxmodel/flatten_tree_proxy_model.hpp>
+#include <ftxmodel/header_decorators.hpp>
 #include <ftxmodel/identity_proxy_model.hpp>
 #include <ftxmodel/item_delegate.hpp>
 #include <ftxmodel/item_selection_model.hpp>

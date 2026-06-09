@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <utility>
 #include "abstract_proxy_model.hpp"
+#include "any_to_string.hpp"
 
 namespace ftxmodel {
 
@@ -136,6 +137,9 @@ class SortFilterProxyModel : public AbstractProxyModel {
   int rowCount(const ModelIndex& parent) const override;
   int columnCount(const ModelIndex& parent) const override;
   bool hasChildren(const ModelIndex& parent) const override;
+
+  [[nodiscard]] int sortColumn() const noexcept;
+  [[nodiscard]] bool ascending() const noexcept;
 
  protected:
   void invalidate() override;
@@ -460,8 +464,55 @@ inline bool SortFilterProxyModel::hasChildren(const ModelIndex& parent) const {
          !proxyMapping->proxy_column_to_source.empty();
 }
 
+inline int SortFilterProxyModel::sortColumn() const noexcept {
+  return impl->sort_column;
+}
+
+inline bool SortFilterProxyModel::ascending() const noexcept {
+  return impl->ascending;
+}
+
 inline void SortFilterProxyModel::invalidate() {
   impl->mappings.clear();
+}
+
+struct Sorters {
+  static SortProxyModelLessThan StandardLessThan(bool inverted = false);
+};
+
+inline SortProxyModelLessThan Sorters::StandardLessThan(bool inverted) {
+  return [inverted](const ModelIndex& source_lhs,
+                    const ModelIndex& source_rhs) -> bool {
+    const auto lhs_data = source_lhs.data();
+    const auto rhs_data = source_rhs.data();
+    if (lhs_data.type() == rhs_data.type()) {
+      const auto type_idx = std::type_index(lhs_data.type());
+#define FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(T)             \
+  if (type_idx == typeid(T)) {                                   \
+    const auto& lhs_val = std::any_cast<const T&>(lhs_data);     \
+    const auto& rhs_val = std::any_cast<const T&>(rhs_data);     \
+    return inverted ? (rhs_val < lhs_val) : (lhs_val < rhs_val); \
+  }
+      // Shortcut for common types
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(int);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(long);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(long long);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(unsigned int);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(unsigned long);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(unsigned long long);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(float);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(double)
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(std::string);
+      FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS(std::string_view);
+#undef FTXMODEL_DEFINE_STD_LESS_THAN_FOR_SORTERS
+    }
+
+    // Safe string-converted fallback handling
+    const std::string lhs_str = AnyToStringTranslator::Translate(lhs_data);
+    const std::string rhs_str = AnyToStringTranslator::Translate(rhs_data);
+
+    return inverted ? (rhs_str < lhs_str) : (lhs_str < rhs_str);
+  };
 }
 
 }  // namespace ftxmodel
