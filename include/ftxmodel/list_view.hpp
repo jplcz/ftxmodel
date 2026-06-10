@@ -11,11 +11,9 @@ namespace ftxmodel {
 class ListView : public AbstractGridLikeItemView {
  private:
   int selected_row_ = 0;
-  std::function<void()> trigger_ftxui_refresh_;
 
  public:
-  explicit ListView(std::function<void()> refreshCb)
-      : trigger_ftxui_refresh_(refreshCb) {}
+  ListView() = default;
 
   void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
     AbstractItemView::setModel(model);
@@ -75,8 +73,11 @@ class ListView : public AbstractGridLikeItemView {
     if (!model() || !itemDelegate()) {
       return ftxui::text("Missing model or delegate bindings.");
     }
-    int totalRows = model()->rowCount();
-    int activeRow = selectionModel()->currentIndex().row();
+    const int totalRows = model()->rowCount();
+    const auto currentIndex = selectionModel()->currentIndex();
+    const int activeRow = currentIndex.row();
+    const bool viewFocused = this->Focused();
+    const auto* barStyle = this->highlightStyle();
 
     // Compute List Panel Box Width Limit
     int optimalWidth = 0;
@@ -88,40 +89,68 @@ class ListView : public AbstractGridLikeItemView {
     optimalWidth = std::max(optimalWidth + 2,
                             15);  // Snug minimum constraint limit boundary
 
-    std::vector<ftxui::Element> renderedRows;
+    std::vector<std::vector<ftxui::Element>> renderedRows;
 
     if (showHorizontalHeaders()) {
+      std::vector<ftxui::Element> row;
+
+      if (showVerticalHeaders()) {
+        row.emplace_back(ftxui::text(" "));
+      }
       // Pulls directly from the base class via headerDelegate()
       ftxui::Element headerWidget =
           horizontalHeaderDelegate()->createHeaderWidget(
               0, Orientation::Horizontal, model());
-      renderedRows.push_back(
-          headerWidget | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth));
-      renderedRows.push_back(ftxui::separator());
+      row.emplace_back(headerWidget |
+                       ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth));
+      row.emplace_back(ftxui::separator());
+      renderedRows.emplace_back(std::move(row));
     }
 
     for (int r = 0; r < totalRows; ++r) {
+      std::vector<ftxui::Element> row;
+
+      if (showVerticalHeaders()) {
+        row.emplace_back(verticalHeaderDelegate()->createHeaderWidget(
+            r, Orientation::Vertical, model()));
+      }
+
       ModelIndex idx = model()->index(r, 0);
       ftxui::Element cellWidget =
           itemDelegate()->createWidget(idx, model()) |
           ftxui::size(ftxui::WIDTH, ftxui::EQUAL, optimalWidth);
 
-      // Highlight selection
+      ViewStateFlags f = ViewNormal;
+
+      if (currentIndex.isValid()) {
+        f |= ViewSelected;
+      }
+
       if (r == activeRow) {
-        cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::Blue) |
-                     ftxui::color(ftxui::Color::White) | ftxui::bold;
+        f |= ViewIsSameRow;
       }
-      if (Focused()) {
-        renderedRows.push_back(cellWidget | ftxui::focus);
-      } else {
-        renderedRows.push_back(cellWidget);
+
+      if (idx == currentIndex) {
+        f |= ViewIsExactCell;
       }
+
+      if (viewFocused) {
+        f |= ViewFocused;
+      }
+
+      cellWidget = barStyle->applyHighlight(std::move(cellWidget), f);
+      cellWidget = barStyle->applyGlobalFocus(std::move(cellWidget), f, idx);
+
+      row.push_back(cellWidget);
+
+      renderedRows.emplace_back(std::move(row));
     }
-    return ftxui::vbox(std::move(renderedRows)) | ftxui::vscroll_indicator |
+    return ftxui::gridbox(std::move(renderedRows)) | ftxui::vscroll_indicator |
            ftxui::frame | ftxui::border;
   }
 
-  void update() override { trigger_ftxui_refresh_(); }
+ protected:
+  void update() override {}
 };
 
 }  // namespace  ftxmodel

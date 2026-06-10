@@ -98,8 +98,7 @@ int main() {
                                 Orientation::Vertical);
 
   auto screen = ScreenInteractive::TerminalOutput();
-  auto table_view =
-      std::make_unique<TableView>([&]() { screen.PostEvent(Event::Custom); });
+  auto table_view = std::make_unique<TableView>();
   table_view->setModel(concat_proxy);
   table_view->setItemDelegate(std::make_shared<StyledTextDelegate>());
 

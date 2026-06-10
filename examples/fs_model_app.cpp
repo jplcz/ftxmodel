@@ -15,7 +15,7 @@ int main() {
   auto fsDelegate = std::make_shared<FileSystemRouterDelegate>();
 
   // Pass component down into the multi-column separator TreeView engine
-  TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TreeView treeView;
   treeView.setItemDelegate(fsDelegate);
   treeView.setModel(fsModel);
   treeView.setShowHorizontalHeaders(true);

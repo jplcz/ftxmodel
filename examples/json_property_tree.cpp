@@ -56,7 +56,7 @@ int main() {
   auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
                                                        ftxui::Color::Yellow);
 
-  TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TreeView treeView;
   treeView.setItemDelegate(delegate);
   treeView.setModel(model);
 

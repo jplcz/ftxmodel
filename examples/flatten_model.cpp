@@ -30,7 +30,7 @@ int main() {
         return system_locale(lstring, rstring);
       });
 
-  TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TableView tableView;
   tableView.setItemDelegate(std::make_shared<ftxmodel::StyledTextDelegate>());
   tableView.setModel(sorted_proxy);
 

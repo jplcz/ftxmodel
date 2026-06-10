@@ -232,7 +232,7 @@ int main() {
       .registerColumn(1, checkDel)      // Health Checkbox Column
       .registerColumn(2, progressDel);  // CPU Load Gauge Column
 
-  TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TableView tableView;
   tableView.setItemDelegate(tableRouter);
   tableView.setModel(metricsModel);
   tableView.setShowHorizontalHeaders(true);
@@ -251,7 +251,7 @@ int main() {
           typeid(bool),
           checkDel);  // Booleans automatically render as interactive checkboxes
 
-  TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TreeView treeView;
   treeView.setItemDelegate(treeRouter);
   treeView.setModel(configModel);
   treeView.setShowHorizontalHeaders(true);

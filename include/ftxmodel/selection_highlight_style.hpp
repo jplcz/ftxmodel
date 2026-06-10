@@ -112,6 +112,59 @@ class SelectionHighlightStyle {
 
     return content;
   }
+
+  virtual ftxui::Element applyGlobalFocus(ftxui::Element content,
+                                          const ViewStateFlags state,
+                                          const ModelIndex& index) const {
+    switch (m_behavior) {
+      case SelectionBehavior::SelectRows:
+        if (index.column() == 0 &&
+            (state & (ViewFocused | ViewIsExactCell | ViewIsSameRow)) ==
+                (ViewFocused | ViewIsSameRow)) {
+          return content | ftxui::focus;
+        }
+        break;
+      case SelectionBehavior::SelectCells:
+        if ((state & (ViewFocused | ViewIsExactCell)) ==
+            (ViewFocused | ViewIsExactCell)) {
+          return content | ftxui::focus;
+        }
+        break;
+      default:
+        break;
+    }
+
+    return content;
+  }
+
+  virtual ftxui::Element applySeparatorHighlight(
+      ftxui::Element content,
+      const ViewStateFlags state) const {
+    if (m_behavior != SelectionBehavior::SelectRows) {
+      return content;
+    }
+    if (!(state & ViewIsSameRow)) {
+      return content;
+    }
+    // Evaluate rendering themes based on active view window focus parameters
+    if (state & ViewFocused) {
+      // If we are selecting rows, provide visual context separation between the
+      // exact cursor focus cell and the secondary column tracking fragments on
+      // that line.
+      if (!(state & ViewIsExactCell)) {
+        return std::move(content) | m_row_track_decorator;
+      }
+
+      // Precision focus highlight style rule cross-over block
+      return std::move(content) | m_active_focus_decorator;
+    } else if (state & ViewSelected) {
+      // Row selection fallback tracking theme when component focus is blurred
+      // out
+      return std::move(content) | m_blurred_decorator;
+    }
+
+    return content;
+  }
 };
 
 }  // namespace ftxmodel

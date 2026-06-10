@@ -13,8 +13,6 @@ namespace ftxmodel {
 
 class TableView : public AbstractGridLikeItemView {
  private:
-  std::function<void()> trigger_ftxui_refresh_;
-
   // Helper calculation loop to find the widest cell footprint constraint in a
   // specific column track
   [[nodiscard]] int calculateOptimalColumnWidth(int colIndex) const {
@@ -50,8 +48,7 @@ class TableView : public AbstractGridLikeItemView {
   }
 
  public:
-  explicit TableView(std::function<void()> refreshCb)
-      : trigger_ftxui_refresh_(std::move(refreshCb)) {}
+  TableView() = default;
 
   void setModel(const std::shared_ptr<AbstractItemModel>& model) override {
     // Essential: Invoke base class to hook up signals and instantiate
@@ -144,6 +141,7 @@ class TableView : public AbstractGridLikeItemView {
     int totalRows = model()->rowCount();
     int totalCols = model()->columnCount();
     ModelIndex focusedIndex = selectionModel()->currentIndex();
+    const auto delegate = highlightStyle();
 
     // Precalculate optimal column layout widths
     std::vector<int> colWidths((size_t)totalCols, 0);
@@ -154,6 +152,11 @@ class TableView : public AbstractGridLikeItemView {
     // Optional Horizontal Headers Pass
     if (showHorizontalHeaders()) {
       std::vector<ftxui::Element> headerRow;
+
+      if (showVerticalHeaders()) {
+        headerRow.emplace_back(ftxui::text(" "));
+      }
+
       for (int c = 0; c < totalCols; ++c) {
         ftxui::Element hWidget = horizontalHeaderDelegate()->createHeaderWidget(
             c, Orientation::Horizontal, model());
@@ -175,6 +178,12 @@ class TableView : public AbstractGridLikeItemView {
     // 2D Data Rows Pass
     for (int r = 0; r < totalRows; ++r) {
       std::vector<ftxui::Element> uiRow;
+
+      if (showVerticalHeaders()) {
+        uiRow.emplace_back(verticalHeaderDelegate()->createHeaderWidget(
+            r, Orientation::Vertical, model()));
+      }
+
       for (int c = 0; c < totalCols; ++c) {
         ModelIndex idx = model()->index(r, c);
 
@@ -187,39 +196,36 @@ class TableView : public AbstractGridLikeItemView {
 
         // Check selection state for the entire row to handle background
         // rendering
-        bool isRowSelected = (r == focusedIndex.row());
+        const bool isRowSelected = (r == focusedIndex.row());
 
-        // Decorate cell widget based on active selection states
-        if (idx == focusedIndex) {
-          // Deep focus on the precise selected cell coordinates
-          cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::Blue) |
-                       ftxui::color(ftxui::Color::White) | ftxui::bold;
-          if (Focused()) {
-            cellWidget = cellWidget | ftxui::focus;
-          }
-        } else if (isRowSelected) {
-          // Light row tracking highlight to visually guide across data columns
-          cellWidget = cellWidget | ftxui::bgcolor(ftxui::Color::GrayDark);
+        ViewStateFlags f = ViewNormal;
+
+        if (Focused()) {
+          f |= ViewFocused;
         }
+
+        if (focusedIndex.isValid()) {
+          f |= ViewSelected;
+        }
+
+        if (isRowSelected) {
+          f |= ViewIsSameRow;
+        }
+
+        if (idx == focusedIndex) {
+          f |= ViewIsExactCell;
+        }
+
+        cellWidget = delegate->applyHighlight(std::move(cellWidget), f);
+        cellWidget = delegate->applyGlobalFocus(std::move(cellWidget), f, idx);
 
         uiRow.emplace_back(cellWidget);
 
         // Inject vertical separator between cells, skipping after the last
         // column
         if (c < totalCols - 1) {
-          auto sep = ftxui::separatorLight();
-
-          // Color the separator background to match the row's selection state
-          if (idx == focusedIndex ||
-              (r == focusedIndex.row() && c == focusedIndex.column() - 1)) {
-            // Separator is adjacent to the uniquely focused cell
-            sep = sep | ftxui::bgcolor(ftxui::Color::Blue);
-          } else if (isRowSelected) {
-            // Separator is part of the general row selection guide track
-            sep = sep | ftxui::bgcolor(ftxui::Color::GrayDark);
-          }
-
-          uiRow.push_back(sep);
+          uiRow.push_back(
+              delegate->applySeparatorHighlight(ftxui::separatorLight(), f));
         }
       }
       gridMatrix.emplace_back(std::move(uiRow));
@@ -231,9 +237,7 @@ class TableView : public AbstractGridLikeItemView {
   }
 
  protected:
-  void update() override {
-    trigger_ftxui_refresh_();  // Post event down pipeline to redraw loop
-  }
+  void update() override {}
 };
 
 }  // namespace ftxmodel

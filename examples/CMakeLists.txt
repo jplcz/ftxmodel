@@ -17,6 +17,7 @@ AddExample(flatten_model.cpp)
 AddExample(contact_proxy_model_app.cpp)
 AddExample(async_string_list.cpp)
 AddExample(fetch_more_list.cpp)
+AddExample(shortcut_bar_app.cpp)
 
 find_package(SQLite3)
 

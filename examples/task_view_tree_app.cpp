@@ -272,7 +272,7 @@ int main() {
   auto delegate = std::make_shared<TaskThreadRouterDelegate>();
 
   // Configure the multi-column TreeView
-  TreeView treeView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TreeView treeView;
   treeView.setItemDelegate(delegate);
   treeView.setModel(model);
   treeView.setShowHorizontalHeaders(true);

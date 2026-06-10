@@ -11,9 +11,9 @@ class ShortcutActionModel : public AbstractListModel {
   struct ShortcutItem {
     std::string name;
     std::string key;
-    bool enabled = true;
-    std::function<void()> trigger;
     ftxui::Event event;
+    std::function<void()> trigger;
+    bool enabled = true;
   };
 
  private:
@@ -21,9 +21,6 @@ class ShortcutActionModel : public AbstractListModel {
   std::vector<std::unique_ptr<ShortcutItem>> m_items;
 
  public:
-  static constexpr ItemRole KeyRole = AsItemRole<1>;
-  static constexpr ItemRole EventRole = AsItemRole<2>;
-
   explicit ShortcutActionModel(std::vector<ShortcutItem> items) {
     setItems(std::move(items));
   }
@@ -71,7 +68,7 @@ class ShortcutActionModel : public AbstractListModel {
   }
 
   std::any data(const ModelIndex& index, const ItemRole role) const override {
-    if (!index.isValid() || index.row() >= rowCount(index)) {
+    if (!index.isValid() || index.row() >= static_cast<int>(m_items.size())) {
       return {};
     }
 
@@ -81,12 +78,33 @@ class ShortcutActionModel : public AbstractListModel {
         return index.row();
       case ItemRole::DisplayRole:
         return item->name;
-      case KeyRole:
-        return item->key;
-      case EventRole:
+      case ItemRole::ShortcutRole:
         return item->event;
+      case ItemRole::ShortcutTextRole:
+        return item->key;
       default:
         return {};
+    }
+  }
+
+  bool setData(const ModelIndex& index,
+               const std::any&,
+               ItemRole role) override {
+    if (role != ItemRole::EditRole) {
+      return false;
+    }
+    if (!index.isValid() || index.row() >= static_cast<int>(m_items.size())) {
+      return false;
+    }
+    const auto item = m_items[static_cast<size_t>(index.row())].get();
+    if (!item->enabled) {
+      return false;
+    }
+    if (const auto& func = item->trigger) {
+      func();
+      return true;
+    } else {
+      return false;
     }
   }
 
@@ -96,7 +114,7 @@ class ShortcutActionModel : public AbstractListModel {
     }
     ItemFlags f = ItemFlag::ItemIsSelectable;
     if (m_items[static_cast<size_t>(index.row())]->enabled) {
-      f |= ItemFlag::ItemIsEditable;
+      f |= ItemFlag::ItemIsEnabled | ItemFlag::ItemIsEditable;
     }
     return f;
   }

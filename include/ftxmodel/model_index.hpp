@@ -21,6 +21,10 @@ enum class ItemRole : int {
   ToolTipRole,
   CheckedRole,
   UniqueIdentifierRole,
+  //! Must be ftxui::Event if implemented
+  ShortcutRole,
+  //! Must be string
+  ShortcutTextRole,
   UserRole = 1000
 };
 

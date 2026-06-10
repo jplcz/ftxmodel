@@ -117,7 +117,7 @@ int main() {
   auto model = std::make_shared<TaskTableModel>();
   auto delegate = std::make_shared<TableColumnRouterDelegate>();
 
-  TableView tableView([&]() { screen.PostEvent(ftxui::Event::Custom); });
+  TableView tableView;
   tableView.setItemDelegate(delegate);
   tableView.setModel(model);
 

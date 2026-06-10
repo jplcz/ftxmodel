@@ -89,7 +89,7 @@ int main() {
   auto delegate = std::make_shared<StyledTextDelegate>();
 
   // Initialize your specialized TableView with wake-up pipeline lambda
-  TableView tableView([&]() { screen.PostEvent(Event::Custom); });
+  TableView tableView;
 
   tableView.setItemDelegate(delegate);
   tableView.setModel(sql_model);

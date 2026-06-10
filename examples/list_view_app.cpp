@@ -96,8 +96,7 @@ int main() {
   auto delegate = std::make_shared<PackageItemDelegate>();
 
   // Setup view with a screen refresh closure mapping sigslot back into FTXUI
-  auto refreshUiLambda = [&]() { screen.PostEvent(Event::Custom); };
-  ListView listView(refreshUiLambda);
+  ListView listView;
   listView.setModel(model);
   listView.setItemDelegate(delegate);
 
