@@ -45,7 +45,7 @@ class ShortcutActionModel : public AbstractListModel {
       return;
     }
     beginRemoveRows(ModelIndex(), row, row);
-    m_items.erase(m_items.begin() + static_cast<size_t>(row));
+    m_items.erase(m_items.begin() + static_cast<ssize_t>(row));
     endRemoveRows();
   }
 
