@@ -112,6 +112,7 @@ struct SortFilterProxyModelImpl {
   SortProxyModelLessThan lessThan;
   bool ascending = true;
   int sort_column = -1;
+  bool filter_rows_recursive = true;
 };
 
 }  // namespace detail
@@ -140,6 +141,16 @@ class SortFilterProxyModel : public AbstractProxyModel {
 
   [[nodiscard]] int sortColumn() const noexcept;
   [[nodiscard]] bool ascending() const noexcept;
+
+  bool isFilterRowsRecursive() const noexcept;
+
+  /**
+   * Determine whether filtering will be applied to the rows recursively.
+   * Default value is true.
+   * It means that if one of children of node matches the filter, all of
+   * the nodes up to root will also be included in the resulting tree.
+   */
+  void setFilterRowsRecursive(bool);
 
  protected:
   void invalidate() override;
@@ -470,6 +481,20 @@ inline int SortFilterProxyModel::sortColumn() const noexcept {
 
 inline bool SortFilterProxyModel::ascending() const noexcept {
   return impl->ascending;
+}
+
+inline bool SortFilterProxyModel::isFilterRowsRecursive() const noexcept {
+  return impl->filter_rows_recursive;
+}
+
+inline void SortFilterProxyModel::setFilterRowsRecursive(bool value) {
+  if (value == impl->filter_rows_recursive) {
+    return;
+  }
+  beginResetModel();
+  impl->filter_rows_recursive = value;
+  invalidate();
+  endResetModel();
 }
 
 inline void SortFilterProxyModel::invalidate() {
