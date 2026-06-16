@@ -118,9 +118,8 @@ class SelectionHighlightStyle {
                                           const ModelIndex& index) const {
     switch (m_behavior) {
       case SelectionBehavior::SelectRows:
-        if (index.column() == 0 &&
-            (state & (ViewFocused | ViewIsExactCell | ViewIsSameRow)) ==
-                (ViewFocused | ViewIsSameRow)) {
+        if (index.column() == 0 && (state & (ViewFocused | ViewIsSameRow)) ==
+                                       (ViewFocused | ViewIsSameRow)) {
           return content | ftxui::focus;
         }
         break;
