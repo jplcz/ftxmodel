@@ -98,7 +98,7 @@ int main() {
                                 Orientation::Vertical);
 
   auto screen = ScreenInteractive::TerminalOutput();
-  auto table_view = std::make_unique<TableView>();
+  auto table_view = std::make_shared<TableView>();
   table_view->setModel(concat_proxy);
   table_view->setItemDelegate(std::make_shared<StyledTextDelegate>());
 
@@ -111,7 +111,7 @@ int main() {
   // Catch selection changes and re-configure our proxy layout boundaries on the
   // fly
   auto interactive_layout = Container::Vertical(
-      {toggle_button, Renderer([&] {
+      {toggle_button, Renderer(table_view, [&] {
          if (selected_layout_mode == 0) {
            concat_proxy->setSourceModels({model_alpha, model_beta, model_gamma},
                                          Orientation::Vertical);
