@@ -339,14 +339,11 @@ class TreeView : public AbstractGridLikeItemView {
     }
 
     // Return safely bound inside an auto-aligning grid layout matrix
-    return ftxui::gridbox(std::move(gridMatrix)) | ftxui::vscroll_indicator |
-           ftxui::frame | ftxui::border;
+    return ftxui::gridbox(std::move(gridMatrix));
   }
 
  protected:
-  void update() override {
-    rebuildFlattenedTree();
-  }
+  void update() override { rebuildFlattenedTree(); }
 
  private:
   void flattenBranch(const ModelIndex& parent) {

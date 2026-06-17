@@ -232,12 +232,19 @@ class TableView : public AbstractGridLikeItemView {
     }
 
     // Returns perfectly aligned 2D terminal grid canvas boundary box
-    return ftxui::gridbox(gridMatrix) | ftxui::vscroll_indicator |
-           ftxui::frame | ftxui::border;
+    return ftxui::gridbox(gridMatrix);
   }
 
  protected:
-  void update() override {}
+  void update() override {
+    const auto selectedIndex = selectionModel()->currentIndex();
+    if (!selectedIndex.isValid() && model()) {
+      const auto rootIndex = model()->index(0, 0);
+      if (rootIndex.isValid()) {
+        selectionModel()->setCurrentIndex(rootIndex);
+      }
+    }
+  }
 };
 
 }  // namespace ftxmodel
