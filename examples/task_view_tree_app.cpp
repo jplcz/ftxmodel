@@ -272,44 +272,26 @@ int main() {
   auto delegate = std::make_shared<TaskThreadRouterDelegate>();
 
   // Configure the multi-column TreeView
-  TreeView treeView;
-  treeView.setItemDelegate(delegate);
-  treeView.setModel(model);
-  treeView.setShowHorizontalHeaders(true);
+  auto treeView = std::make_shared<TreeView>();
+  treeView->setItemDelegate(delegate);
+  treeView->setModel(model);
+  treeView->setShowHorizontalHeaders(true);
 
   // Bind Keyboard Events to full spatial navigation loops
-  auto baseComponent = ftxui::Make<ftxui::ComponentBase>();
-  auto loopController =
-      ftxui::CatchEvent(baseComponent, [&](ftxui::Event event) {
-        if (event == ftxui::Event::ArrowUp) {
-          treeView.moveUp();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowDown) {
-          treeView.moveDown();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowRight) {
-          treeView.moveRight();
-          return true;
-        }  // Opens branch
-        if (event == ftxui::Event::ArrowLeft) {
-          treeView.moveLeft();
-          return true;
-        }  // Closes branch / jumps to parent
-        if (event == ftxui::Event::Escape) {
-          screen.Exit();
-          return true;
-        }
-        return false;
-      });
+  auto loopController = ftxui::CatchEvent(treeView, [&](ftxui::Event event) {
+    if (event == ftxui::Event::Escape) {
+      screen.Exit();
+      return true;
+    }
+    return false;
+  });
 
   // Draw out the final app viewport panel canvas
   auto appLayout = ftxui::Renderer(loopController, [&]() {
     return ftxui::vbox(
         {ftxui::text(" Task and Thread Subsystem Dashboard ") | ftxui::bold |
              ftxui::center | ftxui::bgcolor(ftxui::Color::GrayDark),
-         ftxui::separator(), treeView.Render(), ftxui::separator(),
+         ftxui::separator(), treeView->Render(), ftxui::separator(),
          ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump Parent | [↑/↓] "
                      "Navigate Rows") |
              ftxui::dim});

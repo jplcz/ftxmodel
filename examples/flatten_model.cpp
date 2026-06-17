@@ -30,52 +30,34 @@ int main() {
         return system_locale(lstring, rstring);
       });
 
-  TableView tableView;
-  tableView.setItemDelegate(std::make_shared<ftxmodel::StyledTextDelegate>());
-  tableView.setModel(sorted_proxy);
+  auto tableView = std::make_shared<TableView>();
+  tableView->setItemDelegate(std::make_shared<ftxmodel::StyledTextDelegate>());
+  tableView->setModel(sorted_proxy);
 
-  auto baseComponent = ftxui::Make<ftxui::ComponentBase>();
-  auto appController =
-      ftxui::CatchEvent(baseComponent, [&](ftxui::Event event) {
-        if (event == ftxui::Event::ArrowUp) {
-          tableView.moveUp();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowDown) {
-          tableView.moveDown();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowLeft) {
-          tableView.moveLeft();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowRight) {
-          tableView.moveRight();
-          return true;
-        }
-        if (event == ftxui::Event::Escape) {
-          screen.Exit();
-          return true;
-        }
-        if (event == ftxui::Event::Character('+')) {
-          flat_proxy->expandAll();
-          return true;
-        }
-        if (event == ftxui::Event::Character('-')) {
-          flat_proxy->collapseAll();
-          return true;
-        }
-        if (event == ftxui::Event::Return) {
-          flat_proxy->expandAll();
-          return true;
-        }
-        return false;
-      });
+  auto appController = ftxui::CatchEvent(tableView, [&](ftxui::Event event) {
+    if (event == ftxui::Event::Escape) {
+      screen.Exit();
+      return true;
+    }
+    if (event == ftxui::Event::Character('+')) {
+      flat_proxy->expandAll();
+      return true;
+    }
+    if (event == ftxui::Event::Character('-')) {
+      flat_proxy->collapseAll();
+      return true;
+    }
+    if (event == ftxui::Event::Return) {
+      flat_proxy->expandAll();
+      return true;
+    }
+    return false;
+  });
 
   auto appLayout = ftxui::Renderer(appController, [&]() {
     return ftxui::vbox({ftxui::text(" Test for FlattenTreeProxyModel ") |
                             ftxui::bold | ftxui::center,
-                        tableView.Render()});
+                        tableView->Render()});
   });
 
   screen.Loop(appLayout);

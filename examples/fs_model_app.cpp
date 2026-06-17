@@ -15,29 +15,13 @@ int main() {
   auto fsDelegate = std::make_shared<FileSystemRouterDelegate>();
 
   // Pass component down into the multi-column separator TreeView engine
-  TreeView treeView;
-  treeView.setItemDelegate(fsDelegate);
-  treeView.setModel(fsModel);
-  treeView.setShowHorizontalHeaders(true);
+  auto treeView = std::make_shared<TreeView>();
 
-  auto baseComp = ftxui::Make<ftxui::ComponentBase>();
-  auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {
-    if (event == ftxui::Event::ArrowUp) {
-      treeView.moveUp();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowDown) {
-      treeView.moveDown();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowRight) {
-      treeView.moveRight();
-      return true;
-    }  // Expands folder
-    if (event == ftxui::Event::ArrowLeft) {
-      treeView.moveLeft();
-      return true;
-    }  // Collapses folder
+  treeView->setItemDelegate(fsDelegate);
+  treeView->setModel(fsModel);
+  treeView->setShowHorizontalHeaders(true);
+
+  auto appController = ftxui::CatchEvent(treeView, [&](ftxui::Event event) {
     if (event == ftxui::Event::Escape) {
       screen.Exit();
       return true;
@@ -49,7 +33,7 @@ int main() {
     return ftxui::vbox({ftxui::text(" C++ OS FileSystem Tree Explorer Node ") |
                             ftxui::bold | ftxui::center |
                             ftxui::bgcolor(ftxui::Color::GrayDark),
-                        treeView.Render()});
+                        treeView->Render()});
   });
 
   screen.Loop(appLayout);
