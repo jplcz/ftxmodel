@@ -73,6 +73,7 @@ struct JoinProxyModel::Impl {
 
   // Cached layout matrices inside JoinProxyModelImpl
   std::vector<SourceModelSegment> m_segments;
+  std::unordered_map<const AbstractItemModel*, size_t> m_modelToSegmentIndex;
   int m_cachedTotalRows = 0;
   int m_cachedTotalColumns = 0;
 
@@ -405,6 +406,7 @@ inline void JoinProxyModel::fetchMore(const ModelIndex& parent) {
 inline void JoinProxyModel::addSourceModel(
     const std::shared_ptr<AbstractItemModel>& model) {
   beginResetModel();
+  impl_->m_modelToSegmentIndex[model.get()] = impl_->m_segments.size();
   impl_->m_segments.emplace_back(model, 0, 0);
 
   impl_->m_connections.emplace_back(model->beginResetModel.connect(
@@ -461,6 +463,7 @@ inline void JoinProxyModel::clearModels() {
   beginResetModel();
   impl_->m_connections.clear();
   impl_->m_segments.clear();
+  impl_->m_modelToSegmentIndex.clear();
   impl_->invalidateAndRebuildCache();
   endResetModel();
 }
@@ -470,30 +473,38 @@ inline ModelIndex JoinProxyModel::mapToSource(
   if (!proxyIndex.isValid()) {
     return {};
   }
-  int row = proxyIndex.row();
-  int column = proxyIndex.column();
+
+  const int row = proxyIndex.row();
+  const int column = proxyIndex.column();
 
   if (impl_->m_orientation == Orientation::Horizontal) {
-    // Find column
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      const int columns = m->columnCount();
-      if (column < columns) {
-        return m->index(row, column);
-      }
-      column -= columns;
+    // Binary Search to find the model segment containing 'column'
+    const auto it = std::lower_bound(
+        impl_->m_segments.begin(), impl_->m_segments.end(), column,
+        [](const Impl::SourceModelSegment& seg, int col) {
+          return (seg.startCoordinate + seg.count) <= col;
+        });
+
+    if (it != impl_->m_segments.end()) {
+      // Direct conversion: calculate local source column
+      const int sourceCol = column - it->startCoordinate;
+      return it->model->index(row, sourceCol);
     }
   } else {
-    // Find row
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      const int rows = m->rowCount();
-      if (row < rows) {
-        return m->index(row, column);
-      }
-      row -= rows;
+    // Binary Search to find the model segment containing 'row'
+    const auto it =
+        std::lower_bound(impl_->m_segments.begin(), impl_->m_segments.end(),
+                         row, [](const Impl::SourceModelSegment& seg, int r) {
+                           return (seg.startCoordinate + seg.count) <= r;
+                         });
+
+    if (it != impl_->m_segments.end()) {
+      // Direct conversion: calculate local source row
+      const int sourceRow = row - it->startCoordinate;
+      return it->model->index(sourceRow, column);
     }
   }
+
   return {};
 }
 
@@ -503,29 +514,26 @@ inline ModelIndex JoinProxyModel::mapFromSource(
     return {};
   }
 
-  int row = sourceIndex.row();
-  int column = sourceIndex.column();
-  void* internalPtr = sourceIndex.internalPointer();
-
-  if (impl_->m_orientation == Orientation::Horizontal) {
-    // Adjust column
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      if (m.get() == sourceIndex.model()) {
-        break;
-      }
-      column += m->columnCount();
-    }
-  } else {
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      if (m.get() == sourceIndex.model()) {
-        break;
-      }
-      row += m->rowCount();
-    }
+  // Lookup the model block index in our structural cache map
+  const auto it = impl_->m_modelToSegmentIndex.find(sourceIndex.model());
+  if (it == impl_->m_modelToSegmentIndex.end()) {
+    return {};  // The source index does not belong to any attached model
   }
-  return createIndex(row, column, internalPtr);
+
+  const auto& segment = impl_->m_segments[it->second];
+
+  // Direct coordinate calculation using pre-computed offsets
+  if (impl_->m_orientation == Orientation::Horizontal) {
+    // Map local column to absolute proxy column
+    const int proxyColumn = sourceIndex.column() + segment.startCoordinate;
+    return createIndex(sourceIndex.row(), proxyColumn,
+                       sourceIndex.internalPointer());
+  } else {
+    // Map local row to absolute proxy row
+    const int proxyRow = sourceIndex.row() + segment.startCoordinate;
+    return createIndex(proxyRow, sourceIndex.column(),
+                       sourceIndex.internalPointer());
+  }
 }
 
 inline void JoinProxyModel::Impl::invalidateAndRebuildCache() {
@@ -554,13 +562,15 @@ inline int JoinProxyModel::Impl::fromSourceRow(
     // Row identity is preserved
     return row;
   }
-  for (const auto& m : m_segments) {
-    if (m.model.get() == sourceModel) {
-      return row;
-    }
-    row += m.count;
+
+  // Direct lookup of the segment's location in our vector
+  const auto it = m_modelToSegmentIndex.find(sourceModel);
+  if (it == m_modelToSegmentIndex.end()) {
+    return -1;
   }
-  return -1;
+
+  // Simply add the pre-calculated proxy start coordinate
+  return row + m_segments[it->second].startCoordinate;
 }
 
 inline int JoinProxyModel::Impl::fromSourceColumn(
@@ -570,13 +580,15 @@ inline int JoinProxyModel::Impl::fromSourceColumn(
     // Column identity is preserved
     return column;
   }
-  for (const auto& m : m_segments) {
-    if (m.model.get() == sourceModel) {
-      return column;
-    }
-    column += m.count;
+
+  // Direct lookup of the segment's location in our vector
+  const auto it = m_modelToSegmentIndex.find(sourceModel);
+  if (it == m_modelToSegmentIndex.end()) {
+    return -1;
   }
-  return -1;
+
+  // Simply add the pre-calculated proxy start coordinate
+  return column + m_segments[it->second].startCoordinate;
 }
 
 inline std::pair<AbstractItemModel*, int> JoinProxyModel::Impl::toSourceRow(
@@ -584,13 +596,19 @@ inline std::pair<AbstractItemModel*, int> JoinProxyModel::Impl::toSourceRow(
   if (m_orientation == Orientation::Horizontal) {
     return {nullptr, -1};
   }
-  for (const auto& m : m_segments) {
-    const int rows = m.count;
-    if (row < rows) {
-      return {m.model.get(), row};
-    }
-    row -= rows;
+
+  // Binary Search using our cached contiguous segments
+  const auto it =
+      std::lower_bound(m_segments.begin(), m_segments.end(), row,
+                       [](const SourceModelSegment& seg, int r) {
+                         return (seg.startCoordinate + seg.count) <= r;
+                       });
+
+  if (it != m_segments.end() && row >= it->startCoordinate) {
+    // Translate the proxy coordinate down to the localized source row
+    return {it->model.get(), row - it->startCoordinate};
   }
+
   return {nullptr, -1};
 }
 
@@ -599,13 +617,19 @@ inline std::pair<AbstractItemModel*, int> JoinProxyModel::Impl::toSourceColumn(
   if (m_orientation == Orientation::Vertical) {
     return {nullptr, -1};
   }
-  for (const auto& m : m_segments) {
-    const int columns = m.count;
-    if (column < columns) {
-      return {m.model.get(), column};
-    }
-    column -= columns;
+
+  // Binary Search using our cached contiguous segments
+  const auto it =
+      std::lower_bound(m_segments.begin(), m_segments.end(), column,
+                       [](const SourceModelSegment& seg, int col) {
+                         return (seg.startCoordinate + seg.count) <= col;
+                       });
+
+  if (it != m_segments.end() && column >= it->startCoordinate) {
+    // Translate the proxy coordinate down to the localized source column
+    return {it->model.get(), column - it->startCoordinate};
   }
+
   return {nullptr, -1};
 }
 
