@@ -79,7 +79,6 @@ struct JoinProxyModel::Impl {
   explicit Impl(JoinProxyModel* q) : self(q) {}
 
   void invalidateAndRebuildCache();
-  void rebuild();
 
   int fromSourceRow(const AbstractItemModel* sourceModel, int row) const;
   int fromSourceColumn(const AbstractItemModel* sourceModel, int column) const;
@@ -214,39 +213,38 @@ inline ModelIndex JoinProxyModel::index(int row,
       column >= columnCount()) {
     return {};
   }
-  impl_->rebuild();
   const int orig_row = row;
   const int orig_col = column;
 
   if (impl_->m_orientation == Orientation::Horizontal) {
-    // Find column
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      const int columns = m->columnCount();
-      if (column < columns) {
-        const auto sourceIndex = m->index(row, column);
-        if (sourceIndex.isValid()) {
-          return createIndex(orig_row, orig_col, sourceIndex.internalPointer());
-        } else {
-          return createIndex(orig_row, orig_col, nullptr);
-        }
-      }
-      column -= columns;
+    // Find segment containing 'column'
+    const auto it = std::lower_bound(
+        impl_->m_segments.begin(), impl_->m_segments.end(), column,
+        [](const Impl::SourceModelSegment& seg, int col) {
+          return (seg.startCoordinate + seg.count) <= col;
+        });
+
+    if (it != impl_->m_segments.end()) {
+      // Translate proxy column index down to source local column coordinate
+      const int sourceCol = column - it->startCoordinate;
+      const auto sourceIndex = it->model->index(row, sourceCol);
+
+      return createIndex(row, column, sourceIndex.internalPointer());
     }
   } else {
-    // Find row
-    for (const auto& seg : impl_->m_segments) {
-      const auto& m = seg.model;
-      const int rows = m->rowCount();
-      if (row < rows) {
-        const auto sourceIndex = m->index(row, column);
-        if (sourceIndex.isValid()) {
-          return createIndex(orig_row, orig_col, sourceIndex.internalPointer());
-        } else {
-          return createIndex(orig_row, orig_col, nullptr);
-        }
-      }
-      row -= rows;
+    // Find segment containing 'row'
+    const auto it =
+        std::lower_bound(impl_->m_segments.begin(), impl_->m_segments.end(),
+                         row, [](const Impl::SourceModelSegment& seg, int r) {
+                           return (seg.startCoordinate + seg.count) <= r;
+                         });
+
+    if (it != impl_->m_segments.end()) {
+      // Translate proxy row index down to source local row coordinate
+      const int sourceRow = row - it->startCoordinate;
+      const auto sourceIndex = it->model->index(sourceRow, column);
+
+      return createIndex(row, column, sourceIndex.internalPointer());
     }
   }
   return {};
@@ -300,7 +298,6 @@ inline bool JoinProxyModel::setData(const ModelIndex& index,
 inline std::any JoinProxyModel::headerData(int section,
                                            Orientation orientation,
                                            ItemRole role) const {
-  impl_->rebuild();
   if (impl_->m_orientation == Orientation::Horizontal) {
     if (orientation == Orientation::Horizontal) {
       for (const auto& seg : impl_->m_segments) {
@@ -331,7 +328,6 @@ inline bool JoinProxyModel::setHeaderData(int section,
                                           Orientation orientation,
                                           const std::any& value,
                                           ItemRole role) {
-  impl_->rebuild();
   if (impl_->m_orientation == Orientation::Horizontal) {
     if (orientation == Orientation::Horizontal) {
       for (const auto& seg : impl_->m_segments) {
@@ -477,8 +473,6 @@ inline ModelIndex JoinProxyModel::mapToSource(
   int row = proxyIndex.row();
   int column = proxyIndex.column();
 
-  impl_->rebuild();
-
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Find column
     for (const auto& seg : impl_->m_segments) {
@@ -513,8 +507,6 @@ inline ModelIndex JoinProxyModel::mapFromSource(
   int column = sourceIndex.column();
   void* internalPtr = sourceIndex.internalPointer();
 
-  impl_->rebuild();
-
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Adjust column
     for (const auto& seg : impl_->m_segments) {
@@ -538,7 +530,7 @@ inline ModelIndex JoinProxyModel::mapFromSource(
 
 inline void JoinProxyModel::Impl::invalidateAndRebuildCache() {
   m_cachedTotalColumns = 0;
-  m_cachedTotalColumns = 0;
+  m_cachedTotalRows = 0;
   for (auto& seg : m_segments) {
     const auto& m = seg.model;
     if (m_orientation == Orientation::Horizontal) {
@@ -554,8 +546,6 @@ inline void JoinProxyModel::Impl::invalidateAndRebuildCache() {
     }
   }
 }
-
-inline void JoinProxyModel::Impl::rebuild() {}
 
 inline int JoinProxyModel::Impl::fromSourceRow(
     const AbstractItemModel* sourceModel,
