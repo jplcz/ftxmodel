@@ -50,7 +50,6 @@ class JoinProxyModel : public AbstractItemModel {
   void addSourceModel(const std::shared_ptr<AbstractItemModel>& model);
   void clearModels();
 
- private:
   ModelIndex mapToSource(const ModelIndex& proxyIndex) const;
   ModelIndex mapFromSource(const ModelIndex& sourceIndex) const;
 
