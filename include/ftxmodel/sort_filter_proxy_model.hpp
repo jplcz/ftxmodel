@@ -6,6 +6,7 @@
 #include <utility>
 #include "abstract_proxy_model.hpp"
 #include "any_to_string.hpp"
+#include "any_type_comparator.hpp"
 
 namespace ftxmodel {
 
@@ -225,13 +226,10 @@ detail::SortFilterProxyModelImpl::rebuildParent(
         }
       }
 
-      const auto lhs_value = AnyToStringTranslator::Translate(lhs.data());
-      const auto rhs_value = AnyToStringTranslator::Translate(rhs.data());
-
       if (ascending) {
-        return lhs_value < rhs_value;
+        return AnyTypeComparator::Compare(lhs.data(), rhs.data());
       } else {
-        return rhs_value < lhs_value;
+        return AnyTypeComparator::Compare(rhs.data(), lhs.data());
       }
     };
 
