@@ -60,14 +60,25 @@ class JoinProxyModel : public AbstractItemModel {
 };
 
 struct JoinProxyModel::Impl {
-  std::vector<std::shared_ptr<AbstractItemModel>> m_models;
   Orientation m_orientation = Orientation::Horizontal;
   std::vector<sigslot::scoped_connection> m_connections;
   JoinProxyModel* self;
 
+  struct SourceModelSegment {
+    std::shared_ptr<AbstractItemModel> model;
+    int startCoordinate;  // Starting row (Vertical) or column (Horizontal) in
+                          // proxy space
+    int count;  // rowCount() or columnCount() of this model at last sync
+  };
+
+  // Cached layout matrices inside JoinProxyModelImpl
+  std::vector<SourceModelSegment> m_segments;
+  int m_cachedTotalRows = 0;
+  int m_cachedTotalColumns = 0;
+
   explicit Impl(JoinProxyModel* q) : self(q) {}
 
-  void invalidate();
+  void invalidateAndRebuildCache();
   void rebuild();
 
   int fromSourceRow(const AbstractItemModel* sourceModel, int row) const;
@@ -114,7 +125,10 @@ struct JoinProxyModel::Impl {
     }
   }
 
-  void slotSourceEndInsertRows() { self->endInsertRows(); }
+  void slotSourceEndInsertRows() {
+    invalidateAndRebuildCache();
+    self->endInsertRows();
+  }
 
   void slotSourceBeginRemoveRows(const AbstractItemModel*,
                                  const ModelIndex&,
@@ -123,7 +137,10 @@ struct JoinProxyModel::Impl {
     self->beginResetModel();
   }
 
-  void slotSourceEndRemoveRows() { self->endResetModel(); }
+  void slotSourceEndRemoveRows() {
+    invalidateAndRebuildCache();
+    self->endResetModel();
+  }
 
   void slotSourceBeginInsertColumns(const AbstractItemModel* source,
                                     const ModelIndex& parent,
@@ -147,7 +164,10 @@ struct JoinProxyModel::Impl {
     }
   }
 
-  void slotSourceEndInsertColumns() { self->endInsertColumns(); }
+  void slotSourceEndInsertColumns() {
+    invalidateAndRebuildCache();
+    self->endInsertColumns();
+  }
 
   void slotSourceBeginRemoveColumns(const AbstractItemModel*,
                                     const ModelIndex&,
@@ -156,11 +176,17 @@ struct JoinProxyModel::Impl {
     self->beginResetModel();
   }
 
-  void slotSourceEndRemoveColumns() { self->endResetModel(); }
+  void slotSourceEndRemoveColumns() {
+    invalidateAndRebuildCache();
+    self->endResetModel();
+  }
 
   void slotSourceBeginResetModel() { self->beginResetModel(); }
 
-  void slotSourceEndResetModel() { self->endResetModel(); }
+  void slotSourceEndResetModel() {
+    invalidateAndRebuildCache();
+    self->endResetModel();
+  }
 };
 
 inline JoinProxyModel::JoinProxyModel() : impl_(std::make_unique<Impl>(this)) {}
@@ -175,8 +201,8 @@ inline void JoinProxyModel::setJoinOrientation(
     const Orientation newOrientation) noexcept {
   if (impl_->m_orientation != newOrientation) {
     beginResetModel();
-    impl_->invalidate();
     impl_->m_orientation = newOrientation;
+    impl_->invalidateAndRebuildCache();
     endResetModel();
   }
 }
@@ -194,7 +220,8 @@ inline ModelIndex JoinProxyModel::index(int row,
 
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Find column
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       const int columns = m->columnCount();
       if (column < columns) {
         const auto sourceIndex = m->index(row, column);
@@ -208,7 +235,8 @@ inline ModelIndex JoinProxyModel::index(int row,
     }
   } else {
     // Find row
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       const int rows = m->rowCount();
       if (row < rows) {
         const auto sourceIndex = m->index(row, column);
@@ -232,50 +260,21 @@ inline int JoinProxyModel::rowCount(const ModelIndex& parent) const {
   if (parent.isValid()) {
     return 0;
   }
-  impl_->rebuild();
-  int result = 0;
-  if (impl_->m_orientation == Orientation::Horizontal) {
-    // Take max of all row counts. Models are joined horizontally
-    for (const auto& m : impl_->m_models) {
-      result = std::max(result, m->rowCount(parent));
-    }
-  } else {
-    // Take sum of all row counts. Models are joined vertically
-    for (const auto& m : impl_->m_models) {
-      result += m->rowCount(parent);
-    }
-  }
-  return result;
+  return impl_->m_cachedTotalRows;
 }
 
 inline int JoinProxyModel::columnCount(const ModelIndex& parent) const {
   if (parent.isValid()) {
     return 0;
   }
-  impl_->rebuild();
-  int result = 0;
-  if (impl_->m_orientation == Orientation::Horizontal) {
-    for (const auto& m : impl_->m_models) {
-      result += m->columnCount(parent);
-    }
-  } else {
-    for (const auto& m : impl_->m_models) {
-      result = std::max(result, m->columnCount(parent));
-    }
-  }
-  return result;
+  return impl_->m_cachedTotalColumns;
 }
 
 inline bool JoinProxyModel::hasChildren(const ModelIndex& parent) const {
-  if (parent.isValid() || impl_->m_models.empty()) {
+  if (parent.isValid()) {
     return false;
   }
-  for (const auto& m : impl_->m_models) {
-    if (m->hasChildren(parent)) {
-      return true;
-    }
-  }
-  return false;
+  return impl_->m_cachedTotalColumns > 0 && impl_->m_cachedTotalRows > 0;
 }
 
 inline std::any JoinProxyModel::data(const ModelIndex& index,
@@ -304,7 +303,8 @@ inline std::any JoinProxyModel::headerData(int section,
   impl_->rebuild();
   if (impl_->m_orientation == Orientation::Horizontal) {
     if (orientation == Orientation::Horizontal) {
-      for (const auto& m : impl_->m_models) {
+      for (const auto& seg : impl_->m_segments) {
+        const auto& m = seg.model;
         const int columns = m->columnCount();
         if (section < columns) {
           return m->headerData(section, orientation, role);
@@ -314,7 +314,8 @@ inline std::any JoinProxyModel::headerData(int section,
     }
   } else {
     if (orientation == Orientation::Vertical) {
-      for (const auto& m : impl_->m_models) {
+      for (const auto& seg : impl_->m_segments) {
+        const auto& m = seg.model;
         const int rows = m->rowCount();
         if (section < rows) {
           return m->headerData(section, orientation, role);
@@ -333,7 +334,8 @@ inline bool JoinProxyModel::setHeaderData(int section,
   impl_->rebuild();
   if (impl_->m_orientation == Orientation::Horizontal) {
     if (orientation == Orientation::Horizontal) {
-      for (const auto& m : impl_->m_models) {
+      for (const auto& seg : impl_->m_segments) {
+        const auto& m = seg.model;
         const int columns = m->columnCount();
         if (section < columns) {
           return m->setHeaderData(section, orientation, value, role);
@@ -343,7 +345,8 @@ inline bool JoinProxyModel::setHeaderData(int section,
     }
   } else {
     if (orientation == Orientation::Vertical) {
-      for (const auto& m : impl_->m_models) {
+      for (const auto& seg : impl_->m_segments) {
+        const auto& m = seg.model;
         const int rows = m->rowCount();
         if (section < rows) {
           return m->setHeaderData(section, orientation, value, role);
@@ -370,7 +373,8 @@ inline ModelIndex JoinProxyModel::findIndexById(
     return {};
   }
 
-  for (const auto& m : impl_->m_models) {
+  for (const auto& seg : impl_->m_segments) {
+    const auto& m = seg.model;
     if (const auto idx = m->findIndexById(targetId); idx.isValid()) {
       return mapFromSource(idx);
     }
@@ -383,7 +387,8 @@ inline bool JoinProxyModel::canFetchMore(const ModelIndex& parent) const {
   if (sourceParent.isValid()) {
     return false;
   }
-  for (const auto& m : impl_->m_models) {
+  for (const auto& seg : impl_->m_segments) {
+    const auto& m = seg.model;
     if (m->canFetchMore(sourceParent)) {
       return true;
     }
@@ -395,7 +400,8 @@ inline void JoinProxyModel::fetchMore(const ModelIndex& parent) {
   if (parent.isValid()) {
     return;
   }
-  for (const auto& m : impl_->m_models) {
+  for (const auto& seg : impl_->m_segments) {
+    const auto& m = seg.model;
     m->fetchMore(parent);
   }
 }
@@ -403,7 +409,7 @@ inline void JoinProxyModel::fetchMore(const ModelIndex& parent) {
 inline void JoinProxyModel::addSourceModel(
     const std::shared_ptr<AbstractItemModel>& model) {
   beginResetModel();
-  impl_->m_models.emplace_back(model);
+  impl_->m_segments.emplace_back(model, 0, 0);
 
   impl_->m_connections.emplace_back(model->beginResetModel.connect(
       &Impl::slotSourceBeginResetModel, impl_.get()));
@@ -451,13 +457,15 @@ inline void JoinProxyModel::addSourceModel(
   impl_->m_connections.emplace_back(model->endRemoveColumns.connect(
       &Impl::slotSourceEndRemoveColumns, impl_.get()));
 
+  impl_->invalidateAndRebuildCache();
   endResetModel();
 }
 
 inline void JoinProxyModel::clearModels() {
   beginResetModel();
   impl_->m_connections.clear();
-  impl_->m_models.clear();
+  impl_->m_segments.clear();
+  impl_->invalidateAndRebuildCache();
   endResetModel();
 }
 
@@ -473,7 +481,8 @@ inline ModelIndex JoinProxyModel::mapToSource(
 
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Find column
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       const int columns = m->columnCount();
       if (column < columns) {
         return m->index(row, column);
@@ -482,7 +491,8 @@ inline ModelIndex JoinProxyModel::mapToSource(
     }
   } else {
     // Find row
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       const int rows = m->rowCount();
       if (row < rows) {
         return m->index(row, column);
@@ -507,14 +517,16 @@ inline ModelIndex JoinProxyModel::mapFromSource(
 
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Adjust column
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       if (m.get() == sourceIndex.model()) {
         break;
       }
       column += m->columnCount();
     }
   } else {
-    for (const auto& m : impl_->m_models) {
+    for (const auto& seg : impl_->m_segments) {
+      const auto& m = seg.model;
       if (m.get() == sourceIndex.model()) {
         break;
       }
@@ -524,7 +536,24 @@ inline ModelIndex JoinProxyModel::mapFromSource(
   return createIndex(row, column, internalPtr);
 }
 
-inline void JoinProxyModel::Impl::invalidate() {}
+inline void JoinProxyModel::Impl::invalidateAndRebuildCache() {
+  m_cachedTotalColumns = 0;
+  m_cachedTotalColumns = 0;
+  for (auto& seg : m_segments) {
+    const auto& m = seg.model;
+    if (m_orientation == Orientation::Horizontal) {
+      seg.startCoordinate = m_cachedTotalColumns;
+      seg.count = m->columnCount();
+      m_cachedTotalColumns += m->columnCount();
+      m_cachedTotalRows = std::max(m_cachedTotalRows, m->rowCount());
+    } else {
+      seg.startCoordinate = m_cachedTotalRows;
+      seg.count = m->rowCount();
+      m_cachedTotalColumns = std::max(m_cachedTotalColumns, m->columnCount());
+      m_cachedTotalRows += m->rowCount();
+    }
+  }
+}
 
 inline void JoinProxyModel::Impl::rebuild() {}
 
@@ -535,11 +564,11 @@ inline int JoinProxyModel::Impl::fromSourceRow(
     // Row identity is preserved
     return row;
   }
-  for (const auto& m : m_models) {
-    if (m.get() == sourceModel) {
+  for (const auto& m : m_segments) {
+    if (m.model.get() == sourceModel) {
       return row;
     }
-    row += m->rowCount();
+    row += m.count;
   }
   return -1;
 }
@@ -551,11 +580,11 @@ inline int JoinProxyModel::Impl::fromSourceColumn(
     // Column identity is preserved
     return column;
   }
-  for (const auto& m : m_models) {
-    if (m.get() == sourceModel) {
+  for (const auto& m : m_segments) {
+    if (m.model.get() == sourceModel) {
       return column;
     }
-    column += m->columnCount();
+    column += m.count;
   }
   return -1;
 }
@@ -565,10 +594,10 @@ inline std::pair<AbstractItemModel*, int> JoinProxyModel::Impl::toSourceRow(
   if (m_orientation == Orientation::Horizontal) {
     return {nullptr, -1};
   }
-  for (const auto& m : m_models) {
-    const int rows = m->rowCount();
+  for (const auto& m : m_segments) {
+    const int rows = m.count;
     if (row < rows) {
-      return {m.get(), row};
+      return {m.model.get(), row};
     }
     row -= rows;
   }
@@ -580,10 +609,10 @@ inline std::pair<AbstractItemModel*, int> JoinProxyModel::Impl::toSourceColumn(
   if (m_orientation == Orientation::Vertical) {
     return {nullptr, -1};
   }
-  for (const auto& m : m_models) {
-    const int columns = m->columnCount();
+  for (const auto& m : m_segments) {
+    const int columns = m.count;
     if (column < columns) {
-      return {m.get(), column};
+      return {m.model.get(), column};
     }
     column -= columns;
   }
