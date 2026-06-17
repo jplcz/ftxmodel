@@ -121,7 +121,7 @@ int main() {
   // to force your scrolling logic and mouse tracking to work within fixed
   // bounds.
   table_view->setViewportDimensions(5, 4);
-  table_view->setShowHorizontalHeaders(true); 
+  table_view->setShowHorizontalHeaders(true);
   table_view->highlightStyle()
       ->setSelectionBehavior(SelectionBehavior::SelectRows)
       .setActiveFocusStyle(ftxui::underlined | color(Color::Cyan) | bold);

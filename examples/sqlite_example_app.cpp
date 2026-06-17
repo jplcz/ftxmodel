@@ -105,7 +105,7 @@ int main() {
 
   // Bundle into main render loop view
   auto main_layout = Container::Vertical(
-      {filter_toggle, Renderer(tableView,[&] {
+      {filter_toggle, Renderer(tableView, [&] {
          // Evaluate selection parameters and update query layers safely using
          // parameter binding vectors
          if (selected_filter == 0) {
