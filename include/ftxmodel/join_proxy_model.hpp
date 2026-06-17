@@ -22,15 +22,16 @@ class JoinProxyModel : public AbstractItemModel {
 
   ModelIndex index(int row,
                    int column,
-                   const ModelIndex& parent) const override;
+                   const ModelIndex& parent = ModelIndex()) const override;
   ModelIndex parent(const ModelIndex& child) const override;
-  int rowCount(const ModelIndex& parent) const override;
-  int columnCount(const ModelIndex& parent) const override;
-  bool hasChildren(const ModelIndex& parent) const override;
-  std::any data(const ModelIndex& index, ItemRole role) const override;
+  int rowCount(const ModelIndex& parent = ModelIndex()) const override;
+  int columnCount(const ModelIndex& parent = ModelIndex()) const override;
+  bool hasChildren(const ModelIndex& parent = ModelIndex()) const override;
+  std::any data(const ModelIndex& index,
+                ItemRole role = ItemRole::DisplayRole) const override;
   bool setData(const ModelIndex& index,
                const std::any& value,
-               ItemRole role) override;
+               ItemRole role = ItemRole::EditRole) override;
   std::any headerData(int section,
                       Orientation orientation,
                       ItemRole role) const override;
@@ -40,8 +41,9 @@ class JoinProxyModel : public AbstractItemModel {
                      ItemRole role) override;
   ItemFlags flags(const ModelIndex& index) const override;
   UniqueNodeId uniqueId(const ModelIndex& index) const override;
-  ModelIndex findIndexById(const UniqueNodeId& targetId,
-                           const ModelIndex& parent) const override;
+  ModelIndex findIndexById(
+      const UniqueNodeId& targetId,
+      const ModelIndex& parent = ModelIndex()) const override;
   bool canFetchMore(const ModelIndex& parent) const override;
   void fetchMore(const ModelIndex& parent) override;
 
@@ -171,7 +173,7 @@ inline Orientation JoinProxyModel::joinOrientation() const noexcept {
 
 inline void JoinProxyModel::setJoinOrientation(
     const Orientation newOrientation) noexcept {
-  if (impl_->m_orientation != Orientation::Horizontal) {
+  if (impl_->m_orientation != newOrientation) {
     beginResetModel();
     impl_->invalidate();
     impl_->m_orientation = newOrientation;
@@ -182,17 +184,25 @@ inline void JoinProxyModel::setJoinOrientation(
 inline ModelIndex JoinProxyModel::index(int row,
                                         int column,
                                         const ModelIndex& parent) const {
-  if (parent.isValid()) {
+  if (parent.isValid() || row < 0 || column < 0 || row >= rowCount() ||
+      column >= columnCount()) {
     return {};
   }
   impl_->rebuild();
+  const int orig_row = row;
+  const int orig_col = column;
 
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Find column
     for (const auto& m : impl_->m_models) {
       const int columns = m->columnCount();
       if (column < columns) {
-        return m->index(row, column);
+        const auto sourceIndex = m->index(row, column);
+        if (sourceIndex.isValid()) {
+          return createIndex(orig_row, orig_col, sourceIndex.internalPointer());
+        } else {
+          return createIndex(orig_row, orig_col, nullptr);
+        }
       }
       column -= columns;
     }
@@ -201,7 +211,12 @@ inline ModelIndex JoinProxyModel::index(int row,
     for (const auto& m : impl_->m_models) {
       const int rows = m->rowCount();
       if (row < rows) {
-        return m->index(row, column);
+        const auto sourceIndex = m->index(row, column);
+        if (sourceIndex.isValid()) {
+          return createIndex(orig_row, orig_col, sourceIndex.internalPointer());
+        } else {
+          return createIndex(orig_row, orig_col, nullptr);
+        }
       }
       row -= rows;
     }
@@ -241,11 +256,11 @@ inline int JoinProxyModel::columnCount(const ModelIndex& parent) const {
   int result = 0;
   if (impl_->m_orientation == Orientation::Horizontal) {
     for (const auto& m : impl_->m_models) {
-      result = std::max(result, m->columnCount(parent));
+      result += m->columnCount(parent);
     }
   } else {
     for (const auto& m : impl_->m_models) {
-      result += m->columnCount(parent);
+      result = std::max(result, m->columnCount(parent));
     }
   }
   return result;
@@ -357,7 +372,7 @@ inline ModelIndex JoinProxyModel::findIndexById(
 
   for (const auto& m : impl_->m_models) {
     if (const auto idx = m->findIndexById(targetId); idx.isValid()) {
-      return idx;
+      return mapFromSource(idx);
     }
   }
   return {};

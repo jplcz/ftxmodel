@@ -7,61 +7,9 @@
 #include <ftxmodel/any_type_comparator.hpp>
 #include "ftxmodel/abstract_item_model.hpp"
 
+#include "string_matrix_model.hpp"
+
 using namespace ftxmodel;
-
-// ============================================================================
-// CONCRETE MOCK MODEL FOR TESTING COORDINATE PAYLOADS
-// ============================================================================
-class StringMatrixModel : public AbstractItemModel {
- public:
-  struct Cell {
-    std::any display_data;
-    std::any unique_id;
-  };
-
-  StringMatrixModel(int rows, int cols)
-      : m_matrix(rows, std::vector<Cell>(cols)) {}
-
-  void setCell(int row, int col, std::any display, std::any id = {}) {
-    m_matrix[row][col].display_data = std::move(display);
-    m_matrix[row][col].unique_id = std::move(id);
-  }
-
-  ModelIndex index(int row,
-                   int column,
-                   const ModelIndex& parent = ModelIndex()) const override {
-    if (parent.isValid() || row < 0 || row >= rowCount() || column < 0 ||
-        column >= columnCount()) {
-      return {};
-    }
-    return createIndex(row, column, const_cast<Cell*>(&m_matrix[row][column]));
-  }
-
-  ModelIndex parent(const ModelIndex&) const override { return {}; }
-  int rowCount(const ModelIndex& parent = ModelIndex()) const override {
-    return parent.isValid() ? 0 : static_cast<int>(m_matrix.size());
-  }
-  int columnCount(const ModelIndex& parent = ModelIndex()) const override {
-    return parent.isValid() ? 0 : static_cast<int>(m_matrix[0].size());
-  }
-
-  std::any data(const ModelIndex& index, ItemRole role) const override {
-    if (!index.isValid()) {
-      return {};
-    }
-    auto* cell = static_cast<Cell*>(index.internalPointer());
-    if (role == ItemRole::DisplayRole || role == ItemRole::EditRole) {
-      return cell->display_data;
-    }
-    if (role == ItemRole::UniqueIdentifierRole) {
-      return cell->unique_id;
-    }
-    return {};
-  }
-
- private:
-  std::vector<std::vector<Cell>> m_matrix;
-};
 
 // Custom User Type for registration tests
 struct CustomPrice {
