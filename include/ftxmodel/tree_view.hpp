@@ -95,10 +95,73 @@ class TreeView : public AbstractGridLikeItemView {
     return false;
   }
 
+  bool moveHome() {
+    if (selected_linear_row_ > 0) {
+      selected_linear_row_ = 0;
+      selectionModel()->setCurrentIndex(
+          flattened_indices_[(size_t)selected_linear_row_]);
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool movePageUp() {
+    if (selected_linear_row_ > 0) {
+      selected_linear_row_ = std::max<int>(selected_linear_row_ - 5, 0);
+      selectionModel()->setCurrentIndex(
+          flattened_indices_[(size_t)selected_linear_row_]);
+      update();
+      return true;
+    }
+    return false;
+  }
+
   bool moveDown() {
     if (selected_linear_row_ <
         static_cast<int>(flattened_indices_.size()) - 1) {
       selected_linear_row_++;
+
+      const auto newIndex =
+          flattened_indices_[static_cast<size_t>(selected_linear_row_)];
+
+      selectionModel()->setCurrentIndex(newIndex);
+
+      if (model()->canFetchMore(newIndex)) {
+        model()->fetchMore(newIndex);
+      }
+
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool movePageDown() {
+    if (selected_linear_row_ <
+        static_cast<int>(flattened_indices_.size()) - 1) {
+      selected_linear_row_ = std::min(selected_linear_row_ + 5,
+                                      (int)flattened_indices_.size() - 1);
+
+      const auto newIndex =
+          flattened_indices_[static_cast<size_t>(selected_linear_row_)];
+
+      selectionModel()->setCurrentIndex(newIndex);
+
+      if (model()->canFetchMore(newIndex)) {
+        model()->fetchMore(newIndex);
+      }
+
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool moveEnd() {
+    if (selected_linear_row_ <
+        static_cast<int>(flattened_indices_.size()) - 1) {
+      selected_linear_row_ = static_cast<int>(flattened_indices_.size()) - 1;
 
       const auto newIndex =
           flattened_indices_[static_cast<size_t>(selected_linear_row_)];
@@ -184,6 +247,22 @@ class TreeView : public AbstractGridLikeItemView {
       }
     } else if (event == ftxui::Event::ArrowRight) {
       if (moveRight()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::Home) {
+      if (moveHome()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::End) {
+      if (moveEnd()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::PageUp) {
+      if (movePageUp()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::PageDown) {
+      if (movePageDown()) {
         return true;
       }
     }
@@ -342,10 +421,39 @@ class TreeView : public AbstractGridLikeItemView {
     return ftxui::gridbox(std::move(gridMatrix));
   }
 
+  void collapseAll() {
+    expanded_nodes_.clear();
+    update();
+  }
+
+  void expandAll() {
+    expanded_nodes_.clear();
+    if (model()) {
+      expandImpl(ModelIndex());
+      update();
+    }
+  }
+
  protected:
   void update() override { rebuildFlattenedTree(); }
 
  private:
+  void expandImpl(const ModelIndex& parent) {
+    const int rows = model()->columnCount(parent);
+    for (int i = 0; i < rows; ++i) {
+      const auto child = model()->index(i, 0, parent);
+      if (child.isValid()) {
+        if (model()->hasChildren(child)) {
+          expanded_nodes_.insert(child.uniqueId());
+          expandImpl(child);
+        }
+      }
+    }
+    if (model()->canFetchMore(parent)) {
+      model()->fetchMore(parent);
+    }
+  }
+
   void flattenBranch(const ModelIndex& parent) {
     int count = model()->rowCount(parent);
     for (int r = 0; r < count; ++r) {

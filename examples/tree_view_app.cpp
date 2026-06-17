@@ -117,28 +117,12 @@ int main() {
   auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
                                                        ftxui::Color::Yellow);
 
-  TreeView treeView;
-  treeView.setItemDelegate(std::make_shared<ProxyItemDelegate>(delegate));
-  treeView.setModel(proxy);
+  auto treeView = std::make_shared<TreeView>();
+  treeView->setItemDelegate(std::make_shared<ProxyItemDelegate>(delegate));
+  treeView->setModel(proxy);
 
-  auto baseComp = ftxui::Make<ftxui::ComponentBase>();
+  auto baseComp = ftxui::Container::Vertical({treeView});
   auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {
-    if (event == ftxui::Event::ArrowUp) {
-      treeView.moveUp();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowDown) {
-      treeView.moveDown();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowRight) {
-      treeView.moveRight();
-      return true;
-    }  // Expands Branch
-    if (event == ftxui::Event::ArrowLeft) {
-      treeView.moveLeft();
-      return true;
-    }  // Collapses Branch
     if (event == ftxui::Event::Escape) {
       screen.Exit();
       return true;
@@ -149,7 +133,7 @@ int main() {
     return ftxui::vbox({ftxui::text(" Interactive Collapsible TreeView ") |
                             ftxui::bold | ftxui::center,
                         ftxui::separator(),
-                        treeView.Render() | ftxui::xflex_grow,
+                        treeView->Render() | ftxui::xflex_grow,
                         ftxui::separator(),
                         ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump "
                                     "Parent | [↑/↓] Navigate") |
