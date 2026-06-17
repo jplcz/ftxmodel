@@ -89,10 +89,10 @@ int main() {
   auto delegate = std::make_shared<StyledTextDelegate>();
 
   // Initialize your specialized TableView with wake-up pipeline lambda
-  TableView tableView;
+  auto tableView = std::make_shared<TableView>();
 
-  tableView.setItemDelegate(delegate);
-  tableView.setModel(sql_model);
+  tableView->setItemDelegate(delegate);
+  tableView->setModel(sql_model);
 
   // Create an interactive control panel to demonstrate safe dynamic binding
   // re-queries
@@ -105,7 +105,7 @@ int main() {
 
   // Bundle into main render loop view
   auto main_layout = Container::Vertical(
-      {filter_toggle, Renderer([&] {
+      {filter_toggle, Renderer(tableView,[&] {
          // Evaluate selection parameters and update query layers safely using
          // parameter binding vectors
          if (selected_filter == 0) {
@@ -132,7 +132,7 @@ int main() {
                             filter_toggle->Render()}),
                       separator(),
                       // Call your custom table component render method here
-                      hbox({tableView.Render() | xflex_shrink}), separator(),
+                      hbox({tableView->Render() | xflex_shrink}), separator(),
                       text(" Use [Arrow Keys] to shift focus parameters. Press "
                            "[ESC] to Exit.") |
                           dim});
@@ -145,10 +145,6 @@ int main() {
                           // shutdown
           return true;    // Tells the engine this keystroke event has been
                           // handled entirely
-        } else if (event == ftxui::Event::ArrowUp) {
-          return tableView.moveUp();
-        } else if (event == ftxui::Event::ArrowDown) {
-          return tableView.moveDown();
         }
         return false;  // Forwards unhandled keys (like arrow keys) down to
                        // child elements
