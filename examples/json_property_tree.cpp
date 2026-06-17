@@ -56,28 +56,12 @@ int main() {
   auto delegate = std::make_shared<StyledTextDelegate>(Alignment::Left,
                                                        ftxui::Color::Yellow);
 
-  TreeView treeView;
-  treeView.setItemDelegate(delegate);
-  treeView.setModel(model);
+  auto treeView = std::make_shared<TreeView>();
 
-  auto baseComp = ftxui::Make<ftxui::ComponentBase>();
-  auto appController = ftxui::CatchEvent(baseComp, [&](ftxui::Event event) {
-    if (event == ftxui::Event::ArrowUp) {
-      treeView.moveUp();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowDown) {
-      treeView.moveDown();
-      return true;
-    }
-    if (event == ftxui::Event::ArrowRight) {
-      treeView.moveRight();
-      return true;
-    }  // Expands Branch
-    if (event == ftxui::Event::ArrowLeft) {
-      treeView.moveLeft();
-      return true;
-    }  // Collapses Branch
+  treeView->setItemDelegate(delegate);
+  treeView->setModel(model);
+
+  auto appController = ftxui::CatchEvent(treeView, [&](ftxui::Event event) {
     if (event == ftxui::Event::Escape) {
       screen.Exit();
       return true;
@@ -88,7 +72,7 @@ int main() {
     return ftxui::vbox({ftxui::text(" Test JSON Property Tree Model ") |
                             ftxui::bold | ftxui::center,
                         ftxui::separator(),
-                        treeView.Render() | ftxui::xflex_grow,
+                        treeView->Render() | ftxui::xflex_grow,
                         ftxui::separator(),
                         ftxui::text(" Controls: [→] Expand | [←] Collapse/Jump "
                                     "Parent | [↑/↓] Navigate") |
