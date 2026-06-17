@@ -29,9 +29,7 @@ class StandardItemModel : public AbstractItemModel {
   ~StandardItemModel() override = default;
 
   StandardItemModel(const int rows, const int columns) {
-    if (rows > 0 && columns > 0) {
-      setDimensions(rows, columns);
-    }
+    setDimensions(rows, columns);
   }
 
   ModelIndex index(const int row,
