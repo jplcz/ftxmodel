@@ -117,41 +117,23 @@ int main() {
   auto model = std::make_shared<TaskTableModel>();
   auto delegate = std::make_shared<TableColumnRouterDelegate>();
 
-  TableView tableView;
-  tableView.setItemDelegate(delegate);
-  tableView.setModel(model);
+  auto tableView = std::make_shared<TableView>();
+  tableView->setItemDelegate(delegate);
+  tableView->setModel(model);
 
-  auto baseComponent = ftxui::Make<ftxui::ComponentBase>();
-  auto appController =
-      ftxui::CatchEvent(baseComponent, [&](ftxui::Event event) {
-        if (event == ftxui::Event::ArrowUp) {
-          tableView.moveUp();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowDown) {
-          tableView.moveDown();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowLeft) {
-          tableView.moveLeft();
-          return true;
-        }
-        if (event == ftxui::Event::ArrowRight) {
-          tableView.moveRight();
-          return true;
-        }
-        if (event == ftxui::Event::Escape) {
-          screen.Exit();
-          return true;
-        }
-        return false;
-      });
+  auto appController = ftxui::CatchEvent(tableView, [&](ftxui::Event event) {
+    if (event == ftxui::Event::Escape) {
+      screen.Exit();
+      return true;
+    }
+    return false;
+  });
 
   auto appLayout = ftxui::Renderer(appController, [&]() {
     return ftxui::vbox(
         {ftxui::text(" Decoupled Model-View-Delegate Table View ") |
              ftxui::bold | ftxui::center,
-         tableView.Render()});
+         tableView->Render()});
   });
 
   screen.Loop(appLayout);

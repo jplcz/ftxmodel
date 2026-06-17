@@ -75,11 +75,57 @@ class TableView : public AbstractGridLikeItemView {
     return false;
   }
 
+  bool moveHome() {
+    ModelIndex current = selectionModel()->currentIndex();
+    const int row = current.row();
+    if (row > 0) {
+      selectionModel()->setCurrentIndex(model()->index(0, current.column()));
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool movePageUp() {
+    ModelIndex current = selectionModel()->currentIndex();
+    const int row = current.row();
+    if (row > 0) {
+      selectionModel()->setCurrentIndex(
+          model()->index(std::max<int>(row - 5, 0), current.column()));
+      update();
+      return true;
+    }
+    return false;
+  }
+
   bool moveDown() {
     ModelIndex current = selectionModel()->currentIndex();
     if (current.row() < model()->rowCount() - 1) {
       selectionModel()->setCurrentIndex(
           model()->index(current.row() + 1, current.column()));
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool movePageDown() {
+    ModelIndex current = selectionModel()->currentIndex();
+    if (current.row() < model()->rowCount() - 1) {
+      selectionModel()->setCurrentIndex(
+          model()->index(std::min(current.row() + 5, model()->rowCount() - 1),
+                         current.column()));
+      update();
+      return true;
+    }
+    return false;
+  }
+
+  bool moveEnd() {
+    ModelIndex current = selectionModel()->currentIndex();
+    if (current.row() < model()->rowCount() - 1) {
+      selectionModel()->setCurrentIndex(
+          model()->index(model()->rowCount() - 1, current.column()));
       update();
       return true;
     }
@@ -123,6 +169,22 @@ class TableView : public AbstractGridLikeItemView {
       }
     } else if (event == ftxui::Event::ArrowRight) {
       if (moveRight()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::Home) {
+      if (moveHome()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::PageUp) {
+      if (movePageUp()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::PageDown) {
+      if (movePageDown()) {
+        return true;
+      }
+    } else if (event == ftxui::Event::End) {
+      if (moveEnd()) {
         return true;
       }
     }
