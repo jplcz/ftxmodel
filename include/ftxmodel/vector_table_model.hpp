@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "abstract_item_model.hpp"
+#include "unique_id_cache_helper.hpp"
 
 namespace ftxmodel {
 
@@ -37,6 +38,19 @@ class VectorTableModel : public AbstractItemModel {
     DataExtractor extractor;
     // Optional configuration for editable fields
     DataMutator mutator = nullptr;
+  };
+
+  struct CacheTraits {
+    static UniqueNodeId getUniqueId(const VectorTableModel<T>& model, int row) {
+      return model.uniqueId(model.index(row, 0));
+    }
+
+    static ModelIndex createIndex(const VectorTableModel<T>& model,
+                                  int row,
+                                  int column) {
+      auto& nonConstModel = const_cast<ftxmodel::VectorTableModel<T>&>(model);
+      return nonConstModel.index(row, column);
+    }
   };
 
   VectorTableModel() = default;
@@ -130,7 +144,11 @@ class VectorTableModel : public AbstractItemModel {
       return false;  // Column is read-only
     }
 
+    // Capture previous identity value state token
+    UniqueNodeId oldId = uniqueId(index);
+
     if (colDef.mutator(m_data[row], value, role)) {
+      m_cache.updateKey(oldId, uniqueId(index), row);
       // Alert views that a cell range has been successfully modified
       this->dataChanged(index, index);
       return true;
@@ -196,6 +214,7 @@ class VectorTableModel : public AbstractItemModel {
    */
   void setKeyExtractor(KeyExtractor extractor) {
     m_keyExtractor = std::move(extractor);
+    m_cache.invalidate();
   }
 
   // ========================================================================
@@ -209,6 +228,7 @@ class VectorTableModel : public AbstractItemModel {
   void setVectorData(std::vector<T> newData) {
     this->beginResetModel();
     m_data = std::move(newData);
+    m_cache.invalidate();
     this->endResetModel();
   }
 
@@ -231,6 +251,7 @@ class VectorTableModel : public AbstractItemModel {
 
     this->beginInsertRows(ModelIndex(), position, position);
     m_data.insert(m_data.begin() + position, item);
+    m_cache.invalidate();
     this->endInsertRows();
   }
 
@@ -253,6 +274,7 @@ class VectorTableModel : public AbstractItemModel {
 
     this->beginRemoveRows(ModelIndex(), position, position);
     m_data.erase(m_data.begin() + position);
+    m_cache.invalidate();
     this->endRemoveRows();
     return true;
   }
@@ -266,13 +288,45 @@ class VectorTableModel : public AbstractItemModel {
     }
     this->beginResetModel();
     m_data.clear();
+    m_cache.clear();
     this->endResetModel();
+  }
+
+  UniqueNodeId uniqueId(const ModelIndex& index) const override {
+    if (!index.isValid() || index.parent().isValid()) {
+      return {nullptr};
+    }
+    const int row = index.row();
+    if (row < 0 || row >= static_cast<int>(m_data.size())) {
+      return {nullptr};
+    }
+
+    // Query custom lambda first
+    if (m_keyExtractor) {
+      return m_keyExtractor(m_data[row]);
+    }
+    // Fallback: Default to a stable, zero-allocation path string matching its
+    // row index position
+    return {std::to_string(row)};
+  }
+
+  ModelIndex findIndexById(
+      const UniqueNodeId& targetId,
+      const ModelIndex& parent = ModelIndex()) const override {
+    std::ignore = parent;  // Flattened 2D grid drops structural boundary maps
+    return m_cache.findIndexById(*this, targetId, [this](auto& cacheHelper) {
+      for (int r = 0; r < static_cast<int>(m_data.size()); ++r) {
+        ModelIndex idx = this->index(r, 0);
+        cacheHelper.insertDirect(this->uniqueId(idx), r);
+      }
+    });
   }
 
  private:
   std::vector<T> m_data;
   std::vector<ColumnDefinition> m_columns;
   KeyExtractor m_keyExtractor = nullptr;
+  UniqueIdCacheHelper<VectorTableModel, int, CacheTraits> m_cache;
 };
 
 }  // namespace ftxmodel

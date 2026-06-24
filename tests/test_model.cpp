@@ -20,6 +20,7 @@
 #include <ftxmodel/standard_item_model.hpp>
 #include <ftxmodel/string_list_model.hpp>
 #include <ftxmodel/table_view.hpp>
+#include <ftxmodel/tree_table_model.hpp>
 #include <ftxmodel/tree_view.hpp>
 #include <ftxmodel/vector_table_model.hpp>
 #include "mock_item_model.hpp"
