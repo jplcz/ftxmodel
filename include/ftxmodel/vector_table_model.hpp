@@ -75,7 +75,8 @@ class VectorTableModel : public AbstractItemModel {
 
     if (row >= 0 && row < static_cast<int>(m_data.size()) && column >= 0 &&
         column < static_cast<int>(m_columns.size())) {
-      return createIndex(row, column, const_cast<T*>(&m_data[row]));
+      return createIndex(row, column,
+                         const_cast<T*>(&m_data[static_cast<size_t>(row)]));
     }
     return {};
   }
@@ -117,11 +118,12 @@ class VectorTableModel : public AbstractItemModel {
 
     // Intercept UniqueIdentifierRole if a custom key extractor was provided
     if (role == ItemRole::UniqueIdentifierRole && m_keyExtractor) {
-      return m_keyExtractor(m_data[row]);
+      return m_keyExtractor(m_data[static_cast<size_t>(row)]);
     }
 
     // Delegate lookup to the column configuration lambda asset
-    return m_columns[col].extractor(m_data[row], role);
+    return m_columns[static_cast<size_t>(col)].extractor(
+        m_data[static_cast<size_t>(row)], role);
   }
 
   bool setData(const ModelIndex& index,
@@ -139,7 +141,7 @@ class VectorTableModel : public AbstractItemModel {
       return false;
     }
 
-    const auto& colDef = m_columns[col];
+    const auto& colDef = m_columns[static_cast<size_t>(col)];
     if (!colDef.mutator) {
       return false;  // Column is read-only
     }
@@ -147,7 +149,7 @@ class VectorTableModel : public AbstractItemModel {
     // Capture previous identity value state token
     UniqueNodeId oldId = uniqueId(index);
 
-    if (colDef.mutator(m_data[row], value, role)) {
+    if (colDef.mutator(m_data[static_cast<size_t>(row)], value, role)) {
       m_cache.updateKey(oldId, uniqueId(index), row);
       // Alert views that a cell range has been successfully modified
       this->dataChanged(index, index);
@@ -163,7 +165,7 @@ class VectorTableModel : public AbstractItemModel {
     if (orientation == Orientation::Horizontal) {
       if (section >= 0 && section < static_cast<int>(m_columns.size())) {
         if (role == ItemRole::DisplayRole) {
-          return m_columns[section].headerTitle;
+          return m_columns[static_cast<size_t>(section)].headerTitle;
         }
       }
       return {};
@@ -183,7 +185,7 @@ class VectorTableModel : public AbstractItemModel {
 
     const int col = index.column();
     if (col >= 0 && col < static_cast<int>(m_columns.size())) {
-      if (m_columns[col].mutator != nullptr) {
+      if (m_columns[static_cast<size_t>(col)].mutator != nullptr) {
         f |= ItemFlag::ItemIsEditable;
       }
     }
@@ -303,10 +305,9 @@ class VectorTableModel : public AbstractItemModel {
 
     // Query custom lambda first
     if (m_keyExtractor) {
-      return m_keyExtractor(m_data[row]);
+      return m_keyExtractor(m_data[static_cast<size_t>(row)]);
     }
-    // Fallback: Default to a stable, zero-allocation path string matching its
-    // row index position
+
     return {std::to_string(row)};
   }
 
