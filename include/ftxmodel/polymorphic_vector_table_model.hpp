@@ -78,7 +78,7 @@ class PolymorphicVectorTableModel : public VectorTableModel<std::any> {
     if (it != m_extractors.end()) {
       return it->second(rowAny, column, role);
     }
-    return {};
+    return rowAny;
   }
 
   bool routeMutator(std::any& rowAny,
