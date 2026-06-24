@@ -74,9 +74,7 @@ class TreeFlattenMockModel : public AbstractItemModel {
     return static_cast<int>(parentNode->children.size());
   }
 
-  int columnCount(const ModelIndex& parent = ModelIndex()) const override {
-    return 1;
-  }
+  int columnCount(const ModelIndex& = ModelIndex()) const override { return 1; }
 
   std::any data(const ModelIndex& index,
                 ItemRole role = ItemRole::DisplayRole) const override {

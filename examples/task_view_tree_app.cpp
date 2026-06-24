@@ -43,8 +43,8 @@ struct BaseNode {
 struct TaskNode : public BaseNode {
   std::string memoryUsage;
 
-  TaskNode(std::string name, std::string mem, BaseNode* p = nullptr)
-      : BaseNode(std::move(name), NodeType::Task, p),
+  TaskNode(std::string taskname, std::string mem, BaseNode* p = nullptr)
+      : BaseNode(std::move(taskname), NodeType::Task, p),
         memoryUsage(std::move(mem)) {}
 };
 
@@ -54,12 +54,12 @@ struct ThreadNode : public BaseNode {
   float cpuLoad;
   bool isActive;
 
-  ThreadNode(std::string name,
+  ThreadNode(std::string tdname,
              int id,
              float cpu,
              bool active,
              BaseNode* p = nullptr)
-      : BaseNode(std::move(name), NodeType::Thread, p),
+      : BaseNode(std::move(tdname), NodeType::Thread, p),
         threadId(id),
         cpuLoad(cpu),
         isActive(active) {}

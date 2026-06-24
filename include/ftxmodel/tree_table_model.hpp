@@ -339,19 +339,6 @@ class TreeTableModel : public AbstractItemModel {
       return false;
     }
 
-    // Adjusting destination index rules according to architectural row-move
-    // logic (Moving an item down shifts subsequent indices up)
-    int internalDest =
-        (destinationRow > sourceRow) ? destinationRow + 1 : destinationRow;
-
-    ModelIndex parentIdx =
-        (targetParent == m_root.get())
-            ? ModelIndex()
-            : createIndex(targetParent->rowInParent(), 0, targetParent);
-
-    // If your AbstractItemModel architecture defines a `beginMoveRows` signal,
-    // emit it here. For a minimal setup, wrapping it in a data update notify
-    // pass forces views to rebuild correctly:
     auto& childVec = targetParent->children;
     std::swap(childVec[sourceRow], childVec[destinationRow]);
 

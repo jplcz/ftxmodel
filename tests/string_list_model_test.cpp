@@ -168,7 +168,7 @@ TEST_F(StringListModelTest, InsertBatchAtSplicesDataAndDispatchesSignals) {
   bool endFired = false;
 
   auto conn1 = model->beginInsertRows.connect(
-      [&](const ModelIndex& parent, int start, int end) {
+      [&](const ModelIndex&, int start, int end) {
         beginFired = true;
         EXPECT_EQ(start, 1);
         EXPECT_EQ(end, 2);  // 2 elements starting at 1 means rows 1 and 2

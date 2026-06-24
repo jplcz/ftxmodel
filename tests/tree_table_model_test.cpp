@@ -114,7 +114,7 @@ TEST_F(TreeTableModelTest, FreshStateIsEmpty) {
 TEST_F(TreeTableModelTest, BasicParentChildIndexResolution) {
   auto* rootNode = model->rootNode();
   auto* branch = model->appendChildItem(rootNode, GroupFolder{"/var/log"});
-  auto* childFile = model->appendChildItem(branch, FileAsset{1043, "syslog"});
+  [[maybe_unused]] auto* childFile = model->appendChildItem(branch, FileAsset{1043, "syslog"});
 
   // Row counts under structural vertices
   EXPECT_EQ(model->rowCount(), 1);  // Root has 1 folder child

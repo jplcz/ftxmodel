@@ -441,7 +441,6 @@ TEST(UnicodeTextScalerTest, HorizonalLine_ToStringViewConversion) {
   // Test Case 2: Validate when the underlying variant is an owning padded
   // std::string
   std::string padded_string = "PaddedText    ";
-  const char* original_buffer_address = padded_string.data();
 
   UnicodeTextScaler::HorizontalLine line_from_string(std::move(padded_string));
 

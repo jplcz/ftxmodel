@@ -8,7 +8,7 @@ class MockTestModel final : public AbstractItemModel {
  public:
   ModelIndex index(int r,
                    int c,
-                   const ModelIndex& p = ModelIndex()) const override {
+                   const ModelIndex& = ModelIndex()) const override {
     return createIndex(
         r, c,
         reinterpret_cast<void*>(static_cast<uintptr_t>((r * 100) + c + 1)));
@@ -30,7 +30,7 @@ TEST_F(ViewCoordinateMapperTest,
        ResetClearsActiveCountersWithoutDroppingCapacity) {
   ViewCoordinateMapper mapper;
   ModelIndex idx1 = model.index(0, 0);
-  ModelIndex idx2 = model.index(0, 1);
+  [[maybe_unused]] ModelIndex idx2 = model.index(0, 1);
 
   // Register spatial bounding regions
   ftxui::Box& box1 = mapper.registerCell(idx1);

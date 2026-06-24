@@ -214,9 +214,6 @@ inline ModelIndex JoinProxyModel::index(int row,
       column >= columnCount()) {
     return {};
   }
-  const int orig_row = row;
-  const int orig_col = column;
-
   if (impl_->m_orientation == Orientation::Horizontal) {
     // Find segment containing 'column'
     const auto it = std::lower_bound(
@@ -293,7 +290,7 @@ inline bool JoinProxyModel::setData(const ModelIndex& index,
     return false;
   }
   return const_cast<AbstractItemModel*>(sourceIndex.model())
-      ->setData(sourceIndex, value);
+      ->setData(sourceIndex, value, role);
 }
 
 inline std::any JoinProxyModel::headerData(int section,
