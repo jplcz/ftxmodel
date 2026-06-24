@@ -17,8 +17,8 @@ class MultiColumnRouterDelegate : public ItemDelegate {
 
   // Fluent API to chain column registrations sequentially
   MultiColumnRouterDelegate& registerColumn(
-      int column,
-      std::shared_ptr<ItemDelegate> delegate) {
+      const int column,
+      const std::shared_ptr<ItemDelegate>& delegate) {
     column_delegates_[column] = delegate;
     return *this;
   }
@@ -26,7 +26,7 @@ class MultiColumnRouterDelegate : public ItemDelegate {
   // Set an optional fallback delegate for any column that isn't explicitly
   // registered
   void setDefaultFallback(std::shared_ptr<ItemDelegate> delegate) {
-    default_fallback_delegate_ = delegate;
+    default_fallback_delegate_ = std::move(delegate);
   }
 
   // ==========================================================================
@@ -34,8 +34,8 @@ class MultiColumnRouterDelegate : public ItemDelegate {
   // ==========================================================================
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
-    auto it = column_delegates_.find(index.column());
-    if (it != column_delegates_.end() && it->second) {
+    if (const auto it = column_delegates_.find(index.column());
+        it != column_delegates_.end() && it->second) {
       return it->second->createWidget(index, model);
     }
 
@@ -70,21 +70,21 @@ class MultiTypeRouterDelegate : public ItemDelegate {
 
  public:
   MultiTypeRouterDelegate& registerType(
-      std::type_index type,
-      std::shared_ptr<ItemDelegate> delegate) {
+      const std::type_index type,
+      const std::shared_ptr<ItemDelegate>& delegate) {
     type_delegates_[type] = delegate;
     return *this;
   }
 
   ftxui::Element createWidget(const ModelIndex& index,
                               const AbstractItemModel* model) const override {
-    std::any val = model->data(index, ItemRole::DisplayRole);
+    const std::any val = model->data(index, ItemRole::DisplayRole);
     if (!val.has_value()) {
       return ftxui::text("");
     }
 
-    auto it = type_delegates_.find(std::type_index(val.type()));
-    if (it != type_delegates_.end() && it->second) {
+    if (const auto it = type_delegates_.find(std::type_index(val.type()));
+        it != type_delegates_.end() && it->second) {
       return it->second->createWidget(index, model);
     }
     return ftxui::text("");
@@ -92,13 +92,13 @@ class MultiTypeRouterDelegate : public ItemDelegate {
 
   ftxui::Dimensions sizeHint(const ModelIndex& index,
                              const AbstractItemModel* model) const override {
-    std::any val = model->data(index, ItemRole::DisplayRole);
+    const std::any val = model->data(index, ItemRole::DisplayRole);
     if (!val.has_value()) {
       return ftxui::Dimensions{0, 1};
     }
 
-    auto it = type_delegates_.find(std::type_index(val.type()));
-    if (it != type_delegates_.end() && it->second) {
+    if (const auto it = type_delegates_.find(std::type_index(val.type()));
+        it != type_delegates_.end() && it->second) {
       return it->second->sizeHint(index, model);
     }
     return ftxui::Dimensions{0, 1};
