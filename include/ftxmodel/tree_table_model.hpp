@@ -201,7 +201,7 @@ class TreeTableModel : public AbstractItemModel {
       return false;
     }
 
-    const auto& colDef = m_columns[index.column()];
+    const auto& colDef = m_columns[static_cast<size_t>(index.column())];
     if (!colDef.mutator) {
       return false;
     }
@@ -389,8 +389,10 @@ class TreeTableModel : public AbstractItemModel {
         parent.isValid() ? static_cast<const Node*>(parent.internalPointer())
                          : m_root.get();
     if (parentNode && row < static_cast<int>(parentNode->children.size())) {
-      return createIndex(row, column,
-                         const_cast<Node*>(parentNode->children[row].get()));
+      return createIndex(
+          row, column,
+          const_cast<Node*>(
+              parentNode->children[static_cast<size_t>(row)].get()));
     }
     return {};
   }
@@ -431,8 +433,8 @@ class TreeTableModel : public AbstractItemModel {
         index.column() >= static_cast<int>(m_columns.size())) {
       return {};
     }
-    return m_columns[index.column()].extractor(node->data, index.column(),
-                                               role);
+    return m_columns[static_cast<size_t>(index.column())].extractor(
+        node->data, index.column(), role);
   }
 
   /**
@@ -446,11 +448,15 @@ class TreeTableModel : public AbstractItemModel {
   void setColumnLogic(int column,
                       DataExtractor extractor,
                       DataMutator mutator = nullptr) {
-    if (column >= static_cast<int>(m_columns.size())) {
-      m_columns.resize(column + 1);
+    if (column < 0) {
+      return;
     }
-    m_columns[column] = {m_headers[column], std::move(extractor),
-                         std::move(mutator)};
+    if (column >= static_cast<int>(m_columns.size())) {
+      m_columns.resize(static_cast<size_t>(column + 1));
+    }
+    m_columns[static_cast<size_t>(column)] = {
+        m_headers[static_cast<size_t>(column)], std::move(extractor),
+        std::move(mutator)};
   }
 
   /**
