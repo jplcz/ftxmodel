@@ -478,7 +478,7 @@ class TreeTableModel : public AbstractItemModel {
     return static_cast<Node*>(index.internalPointer());
   }
 
- private:
+ protected:
   void populateCacheRecursively(
       Node* node,
       UniqueIdCacheHelper<TreeTableModel, Node*, TreeTableCacheTraits>&
