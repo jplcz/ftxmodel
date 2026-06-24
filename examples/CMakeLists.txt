@@ -20,6 +20,7 @@ AddExample(fetch_more_list.cpp)
 AddExample(shortcut_bar_app.cpp)
 AddExample(vector_table_model_app.cpp)
 AddExample(tree_table_model_app.cpp)
+AddExample(polymorphic_tree_table_model_app.cpp)
 
 find_package(SQLite3)
 
